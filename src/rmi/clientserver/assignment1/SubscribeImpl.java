@@ -16,11 +16,24 @@ public class SubscribeImpl extends UnicastRemoteObject implements Subscribe{
 		this.writers = s;
 	}
 
-	@Override
+	@Override 
 	public void subscribe(PriceWriterReader w) throws RemoteException {
 		this.writers.add(w);
 		
 	}
+
+	@Override
+	public void unsubscribe(PriceWriterReader w) throws RemoteException {
+		this.writers.remove(w);
+		
+	}
+
+	@Override
+	public boolean clientIsInSet(PriceWriterReader w) throws RemoteException {
+		return this.writers.contains(w);
+	}
+	
+	
 	
 
 }

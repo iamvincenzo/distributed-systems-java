@@ -2,7 +2,6 @@ package rmi.clientserver.assignment1;
 
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Random;
 
 public class PriceWriterReaderImpl extends UnicastRemoteObject implements PriceWriterReader {
 

@@ -1,6 +1,7 @@
 package rmi.clientserver.assignment1;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -9,6 +10,7 @@ public class CallbackServer {
 	private static final int PORT = 1099;
 	private static final int MAX = 200;
 	private static final int MIN = 10;
+	private static final int CONNECTEDCLIENTS = 3;
 
 	public static void main(String[] args) throws Exception {
 		Random random = new Random();
@@ -17,10 +19,12 @@ public class CallbackServer {
 		Subscribe service = new SubscribeImpl(clientList);
 		registry.rebind("subscribe", service);
 		System.out.println("Server is listening on PORT: " + PORT);
+		boolean isStarted = false;
 		while (true)
 		{
-			if (clientList.size() >= 1)
+			if (clientList.size() >= CONNECTEDCLIENTS || isStarted)
 			{
+				isStarted = true;
 				int currentPrice = random.nextInt(MAX - MIN) + MIN;
 				try 
 				{
@@ -40,6 +44,7 @@ public class CallbackServer {
 							System.out.println("You get the object: the current price is " + currentPrice + " and you offered " + clientPrice);
 							System.out.println("Total purchases: " + w.getPurchases());
 							w.setState(1);
+
 						}
 						else if (w.getOffer() <= currentPrice && w.getState() == 0)
 						{
@@ -49,15 +54,30 @@ public class CallbackServer {
 						
 					}
 					
+					System.out.println("clientList size " + clientList.size());
+					
+					for (PriceWriterReader w: clientList)
+					{
+						if(w.getPurchases() >= 10)
+						{
+							service.unsubscribe(w);
+							//UnicastRemoteObject.unexportObject(w, true);
+						}
+					}
+					
+					if(clientList.size() == 0)
+					{
+						break;
+					}					
 				}
 				catch (Exception e) 
 				{
 					continue;
-				}
-				
-			}
-			
+				} 
+				 
+			}			
 		}
+		
 
 	}
 

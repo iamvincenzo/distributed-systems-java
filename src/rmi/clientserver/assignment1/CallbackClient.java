@@ -2,6 +2,7 @@ package rmi.clientserver.assignment1;
 
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.Random;
 
 public class CallbackClient {
@@ -34,13 +35,13 @@ public class CallbackClient {
 					if (state > 0)
 					{
 						System.out.println("Client has bought " + w.getPurchases() + " objects");
-						busyWaiting = false;
+						//busyWaiting = false;
 						break;
-					}
+					} 
 					else if (state < 0)
 					{
 						System.out.println("Couldn't buy the object");
-						busyWaiting = false;
+						//busyWaiting = false;
 						break;
 					}
 				}
@@ -50,6 +51,17 @@ public class CallbackClient {
 				System.out.println("Client can't make an offer. serverPrice is " + w.getPrice() + " and offer is " + offer);
 			}		
 		}
+		
+//		try
+//		{
+//			service.clientIsInSet(w);
+//		}
+//		catch (Exception e)
+//		{
+//			UnicastRemoteObject.unexportObject(w, false);	
+//		}
+
+		UnicastRemoteObject.unexportObject(w, false);
 		
 	}
 
