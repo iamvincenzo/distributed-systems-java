@@ -9,7 +9,8 @@ import java.util.Set;
  * Implementation of {@code Subscribe} interface.
  * 
  **/
-public class SubscribeImpl extends UnicastRemoteObject implements Subscribe{
+public class SubscribeImpl extends UnicastRemoteObject implements Subscribe
+{
 
 	/**
 	 * 
@@ -27,7 +28,8 @@ public class SubscribeImpl extends UnicastRemoteObject implements Subscribe{
 	 * @throws RemoteException It handles exceptions that may occur during execution of a remote method call.
 	 * 
 	 **/
-	public SubscribeImpl(final Set<PriceWriterReader> s) throws RemoteException {
+	public SubscribeImpl(final Set<PriceWriterReader> s) throws RemoteException 
+	{
 		this.writers = s;
 	}
 
@@ -37,7 +39,8 @@ public class SubscribeImpl extends UnicastRemoteObject implements Subscribe{
 	 * 
 	 **/
 	@Override 
-	public void subscribe(PriceWriterReader w) throws RemoteException {
+	public void subscribe(PriceWriterReader w) throws RemoteException 
+	{
 		this.writers.add(w);
 		 
 	}
@@ -48,18 +51,8 @@ public class SubscribeImpl extends UnicastRemoteObject implements Subscribe{
 	 * 
 	 **/
 	@Override
-	public void unsubscribe(PriceWriterReader w) throws RemoteException {
+	public void unsubscribe(PriceWriterReader w) throws RemoteException 
+	{
 		this.writers.remove(w);
-		
-	}
-	
-	/**
-	 * 
-	 * {@inheritDoc}
-	 * 
-	 **/
-	@Override
-	public boolean clientIsInSet(PriceWriterReader w) throws RemoteException {
-		return this.writers.contains(w);
 	}
 }

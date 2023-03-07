@@ -17,7 +17,8 @@ import java.util.concurrent.CopyOnWriteArraySet;
  * The class {@code CallbackServer} manages the interaction between client and server.
  *
  **/
-public class CallbackServer {
+public class CallbackServer 
+{
 
 	/**
 	 * 
@@ -47,7 +48,8 @@ public class CallbackServer {
 	 * @param args  The method does not requires arguments.
 	 * @throws Exception It indicates if a problem occurred.
 	 */
-	public static void main(String[] args) throws Exception {
+	public static void main(String[] args) throws Exception 
+	{
 		Random random = new Random();
 		Registry registry = LocateRegistry.createRegistry(PORT);
 		Set<PriceWriterReader> clientList = new CopyOnWriteArraySet<>();
@@ -55,7 +57,7 @@ public class CallbackServer {
 		registry.rebind("subscribe", service);
 		System.out.println("Server is listening on PORT: " + PORT);
 		boolean isStarted = false;
-		
+
 		while (true)
 		{
 			if (clientList.size() >= CONNECTEDCLIENTS || isStarted)
@@ -68,19 +70,10 @@ public class CallbackServer {
 				 **/
 				isStarted = true;
 				int currentPrice = random.nextInt(MAX - MIN) + MIN;
-				
+
 				try 
 				{	
-					for (PriceWriterReader w: clientList)
-					{
-						if(w.getPurchases() >= 10)
-						{
-							service.unsubscribe(w);
-						}
-					}
-
 					System.out.println("clientList size " + clientList.size());
-
 
 					if(clientList.size() == 0)
 					{
@@ -97,14 +90,13 @@ public class CallbackServer {
 					for (PriceWriterReader w: clientList) 
 					{
 						int clientPrice = w.getOffer();
-						
+
 						if (w.getOffer() > currentPrice && w.getState() == 0) //Purchase happened successfully.
 						{
 							w.clientHasPurchased();
 							w.setState(1);
 							System.out.println("You get the object: the current price is " + currentPrice + " and you offered " + clientPrice);
 							System.out.println("Total purchases: " + w.getPurchases());
-
 						}
 						else if (w.getOffer() <= currentPrice && w.getState() == 0) //Purchase failed.
 						{
@@ -122,9 +114,6 @@ public class CallbackServer {
 
 			}			
 		}
-
 		System.exit(0);
-
 	}
-
 }

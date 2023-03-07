@@ -8,8 +8,8 @@ import java.rmi.server.UnicastRemoteObject;
  * Implementation of {@code PriceWriterReader} interface.
  * 
  **/
-public class PriceWriterReaderImpl extends UnicastRemoteObject implements PriceWriterReader {
-
+public class PriceWriterReaderImpl extends UnicastRemoteObject implements PriceWriterReader 
+{
 	/**
 	 * 
 	 * serverPrice is the price that the server sends to the client.
@@ -32,8 +32,7 @@ public class PriceWriterReaderImpl extends UnicastRemoteObject implements PriceW
 	 * @throws RemoteException It handles exceptions that may occur during execution of a remote method call.
 	 * 
 	 **/
-	public PriceWriterReaderImpl() throws RemoteException {
-	}
+	public PriceWriterReaderImpl() throws RemoteException {}
 
 	/**
 	 * 
@@ -41,7 +40,8 @@ public class PriceWriterReaderImpl extends UnicastRemoteObject implements PriceW
 	 * 
 	 **/
 	@Override
-	public void putPrice(final int p) throws RemoteException {
+	public void putPrice(final int p) throws RemoteException 
+	{
 		this.serverPrice = p;
 	}
 	
@@ -51,7 +51,8 @@ public class PriceWriterReaderImpl extends UnicastRemoteObject implements PriceW
 	 * 
 	 **/
 	@Override 
-	public void putOffer(final int p) throws RemoteException {
+	public void putOffer(final int p) throws RemoteException 
+	{
 		this.clientPrice = p;
 	}
 	
@@ -61,7 +62,8 @@ public class PriceWriterReaderImpl extends UnicastRemoteObject implements PriceW
 	 * 
 	 **/
 	@Override
-	public int getPrice() throws RemoteException {
+	public int getPrice() throws RemoteException 
+	{
 		return this.serverPrice;
 	}
 	
@@ -71,7 +73,8 @@ public class PriceWriterReaderImpl extends UnicastRemoteObject implements PriceW
 	 * 
 	 **/
 	@Override
-	public int getOffer() throws RemoteException {
+	public int getOffer() throws RemoteException 
+	{
 		return this.clientPrice;
 	}
 
@@ -81,9 +84,9 @@ public class PriceWriterReaderImpl extends UnicastRemoteObject implements PriceW
 	 * 
 	 **/
 	@Override
-	public void clientHasPurchased() throws RemoteException {
+	public void clientHasPurchased() throws RemoteException 
+	{
 		this.purchases += 1;
-		
 	}
 	
 	/**
@@ -92,9 +95,9 @@ public class PriceWriterReaderImpl extends UnicastRemoteObject implements PriceW
 	 * 
 	 **/
 	@Override
-	public int getPurchases() throws RemoteException {
+	public int getPurchases() throws RemoteException 
+	{
 		return this.purchases;
-		
 	}
 
 	/**
@@ -103,7 +106,8 @@ public class PriceWriterReaderImpl extends UnicastRemoteObject implements PriceW
 	 * 
 	 **/
 	@Override
-	public int getState() throws RemoteException {
+	public int getState() throws RemoteException 
+	{
 		return this.state;
 	}
 
@@ -113,7 +117,8 @@ public class PriceWriterReaderImpl extends UnicastRemoteObject implements PriceW
 	 * 
 	 **/
 	@Override
-	public void setState(int s) throws RemoteException {
+	public void setState(int s) throws RemoteException 
+	{
 		this.state = s;
 	}
 }

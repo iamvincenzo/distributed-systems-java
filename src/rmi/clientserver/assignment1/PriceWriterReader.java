@@ -9,7 +9,8 @@ import java.rmi.RemoteException;
  * offers and prices.
  *
  **/
-public interface PriceWriterReader extends Remote {
+public interface PriceWriterReader extends Remote 
+{
 	
 	/**
 	 * 

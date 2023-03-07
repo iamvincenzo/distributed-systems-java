@@ -18,7 +18,8 @@ import java.util.Random;
 * server.
 *
 **/
-public class CallbackClient {
+public class CallbackClient 
+{
 	
 	/**
 	 * 
@@ -45,7 +46,8 @@ public class CallbackClient {
 	   * @throws Exception It indicates if a problem occurred.
 	   *
 	  **/
-	public static void main(String[] args) throws Exception {
+	public static void main(String[] args) throws Exception 
+	{
 		Random random = new Random();
 		Registry registry = LocateRegistry.getRegistry();
 		PriceWriterReader w = new PriceWriterReaderImpl();
@@ -64,8 +66,8 @@ public class CallbackClient {
 				 
 				/*Synchronization between client and server. If conditions are matched
 				client sends its offer to the server and waits for its response.*/
-				
-				while(true)
+				boolean busyWaiting = true;
+				while(busyWaiting)
 				{
 					int state = w.getState();
 					if (state > 0)
@@ -86,24 +88,7 @@ public class CallbackClient {
 			}		
 		}
 		
-
-		// Synchronization between client and server to terminate the client.
-		
-		while(true)
-		{
-			try
-			{
-				if (!service.clientIsInSet(w))
-				{
-					break;
-				}
-			}
-			catch (Exception e)
-			{ 
-				UnicastRemoteObject.unexportObject(w, true);	
-			}
-		}
-		UnicastRemoteObject.unexportObject(w, true);		 
+		service.unsubscribe(w);
+		UnicastRemoteObject.unexportObject(w, true);	 
 	}
-
 }

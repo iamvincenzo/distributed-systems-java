@@ -8,8 +8,8 @@ import java.rmi.RemoteException;
  * Interface {@code Subscribe} to allow the client to subscribe its remote object.
  *
  **/
-public interface Subscribe extends Remote {
-	
+public interface Subscribe extends Remote 
+{
 	/**
 	 * 
 	 * Method used by the client to subscribe its remote object.
@@ -29,15 +29,4 @@ public interface Subscribe extends Remote {
 	 * 
 	 **/
 	void unsubscribe (final PriceWriterReader w) throws RemoteException;
-	
-	/**
-	 * 
-	 * Method used by the client to check if its remote object is in server's list.
-	 * 
-	 * @param w PriceWriterReader object
-	 * @return true or false 
-	 * @throws RemoteException It handles exceptions that may occur during execution of a remote method call.
-	 * 
-	 **/
-	boolean clientIsInSet (final PriceWriterReader w) throws RemoteException;
 }
