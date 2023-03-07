@@ -1,3 +1,10 @@
+/**
+ * 
+ * @author giorgia.tedaldi@studenti.unipr.it 339642
+ * @author vincenzo.fraello@studenti.unipr.it 339641
+ *
+ **/
+
 package rmi.clientserver.assignment1;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
