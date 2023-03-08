@@ -62,7 +62,7 @@ public class CallbackClient
 			{
 				System.out.println("Client is making an offer  " + offer + " for serverPrice " + w.getPrice());
 				w.setState(0);
-				w.putOffer(offer);
+				w.putOffer(offer); 
 				 
 				/*Synchronization between client and server. If conditions are matched
 				client sends its offer to the server and waits for its response.*/

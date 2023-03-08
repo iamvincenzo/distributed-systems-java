@@ -4,13 +4,12 @@ import java.io.Serializable;
 
 /**
 *
-* The class {@code Response} provides a simplified model of a response message.
+* The class {@code Price} provides a simplified model to make/read a price.
 *
 **/
-public class Response implements Serializable
+public class Price implements Serializable
 {
   private static final long serialVersionUID = 1L;
-
   private final int value;
 
   /**
@@ -19,7 +18,7 @@ public class Response implements Serializable
    * @param v  the value.
    *
   **/
-  public Response(final int v)
+  public Price(final int v)
   {
     this.value = v;
   }
@@ -35,6 +34,3 @@ public class Response implements Serializable
     return this.value;
   }
 }
-
-
-

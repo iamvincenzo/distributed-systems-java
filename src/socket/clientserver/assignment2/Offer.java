@@ -4,22 +4,21 @@ import java.io.Serializable;
 
 /**
 *
-* The class {@code Request} provides a simplified model of a request message.
+* The class {@code Offer} provides a simplified model to make/read an offer.
 *
 **/
-public class Request implements Serializable
+public class Offer implements Serializable
 {
   private static final long serialVersionUID = 1L;
-
   private final int value;
 
-  /**
+  /** 
    * Class constructor.
    *
    * @param v  the value.
-   *
+   * 
   **/
-  public Request(final int v)
+  public Offer(final int v)
   {
     this.value = v;
   }

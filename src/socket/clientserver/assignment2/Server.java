@@ -45,13 +45,14 @@ public class Server
   {
     this.pool = new ThreadPoolExecutor(COREPOOL, MAXPOOL, IDLETIME,
         TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
+    
+    System.out.println("Server is listening on PORT " + SPORT);
 
     while (true)
     {
       try
       {
         Socket s = this.socket.accept();
-
         this.pool.execute(new ServerThread(this, s));
       }
       catch (Exception e)
@@ -106,5 +107,3 @@ public class Server
     new Server().run();
   }
 }
-
-

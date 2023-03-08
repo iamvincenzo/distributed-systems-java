@@ -12,79 +12,135 @@ import java.util.Random;
  * The class {@code Client} defines a client that sends an object
  * to a server and receives its answer.
  *
-**/
+ **/
 
 public class Client
 {
-  private static final int SPORT = 4445;
-  private static final String SHOST = "localhost";
-  private static final int MAX = 100;
+	private static final int SPORT = 4445;
+	private static final String SHOST = "localhost";
+	private static final int MAX = 200;
+	private static final int MIN = 10;
+	private int purchases = 0;
 
-  /**
-   * 
-   * Runs the client's code.
-   *
-  **/
-  public void run()
-  {
-    try
-    {
-      Socket client = new Socket(SHOST, SPORT);
+	/**
+	 * 
+	 * Runs the client's code.
+	 * The client wait for a @see Price from server and generates a random @see Offer.
+	 * If offer is greater than price he can make a purchase request, than he waits for
+	 * server's response (successfully purchased the object or not).
+	 * If the client cannot make the purchase request he sends an offer with a 0 value.
+	 * When the client reaches 10 purchases he sends an offer with a -1 value to the server.
+	 *
+	 **/
+	public void run()
+	{
+		try
+		{
+			Socket client = new Socket(SHOST, SPORT);
 
-      ObjectOutputStream os = new ObjectOutputStream(client.getOutputStream());
-      ObjectInputStream  is = null;
+			ObjectOutputStream os = new ObjectOutputStream(client.getOutputStream());
+			ObjectInputStream  is = null;
+			Random r = new Random();
 
-      Random r = new Random();
+			while (true)
+			{
+				
+				if (is == null)
+				{
+					is = new ObjectInputStream(new BufferedInputStream(client.getInputStream()));
+				}
+				
+				//Client reads server price
+				Object o = is.readObject();
+				
+				if (o instanceof Price)
+				{
+					//If client purchases are greater than 10 he will close connection
+					if (getPurchases() >= 10) 
+					{  
+						//Sends -1 to warn serverThred that he is closing the connection
+						Offer endOffer = new Offer(-1);
+						os.writeObject(endOffer);
+						break;
+					}
+					
+					Price serverPrice = (Price) o;
+					System.out.format("Client received %s from Server%n", serverPrice.getValue());
 
-      while (true)
-      {
-        Request rq = new Request(r.nextInt(MAX));
+					//Sets its offer
+					Offer offer = new Offer(r.nextInt(MAX-MIN)+MIN);
+					
+					if (offer.getValue() > serverPrice.getValue())
+					{
+						System.out.format("Client is making its offer %s to Server\n", offer.getValue());
+						os.writeObject(offer);
+						os.flush();  
 
-        System.out.format("Client sends: %s to Server", rq.getValue());
+						//Waits for server's response to know if purchase is successfully done
+						Object a = is.readObject();
 
-        os.writeObject(rq);
-        os.flush();
+						if (a instanceof Acknowledgement)
+						{
+							Acknowledgement ack = (Acknowledgement) a;
+							if(ack.getValue())
+							{
+								incrementPurchases();
+								System.out.println("Client has purchased " + getPurchases() + " objects");
+							}
+							else
+							{
+								System.out.println("Couldn't purchase the object");
+							}
+						}
+					}
+					else 
+					{
+						//Cannot afford the object
+						Offer noOffer = new Offer(0);
+						os.writeObject(noOffer);
+						System.out.println("Client can't make an offer.");
+					}
+				}
+			}
+			client.close();
+		} 
+		catch (IOException | ClassNotFoundException e)
+		{
+			e.printStackTrace();
+		}
+	}
 
-        if (is == null)
-        {
-          is = new ObjectInputStream(new BufferedInputStream(
-              client.getInputStream()));
-        }
+	/**
+	 * 
+	 * Method to increment client's purchases.
+	 * 
+	 **/
+	private void incrementPurchases()
+	{
+		this.purchases += 1;
+	}
 
-        Object o = is.readObject();
+	/**
+	 * 
+	 * Method to get client's purchases.
+	 * 
+	 * @return purchases
+	 * 
+	 **/
+	private int getPurchases()
+	{
+		return this.purchases;
+	}
 
-        if (o instanceof Response)
-        {
-          Response rs = (Response) o;
-
-          System.out.format(" and received: %s from Server%n", rs.getValue());
-
-          if (rs.getValue() == 0)
-          {
-            break;
-          }
-        }
-      }
-
-      client.close();
-    }
-    catch (IOException | ClassNotFoundException e)
-    {
-      e.printStackTrace();
-    }
-  }
-
-  /**
-   * 
-   * Starts the demo.
-   *
-   * @param args  the method does not requires arguments.
-   *
-  **/
-  public static void main(final String[] args)
-  {
-    new Client().run();
-  }
+	/**
+	 * 
+	 * Starts the demo.
+	 *
+	 * @param args  the method does not requires arguments.
+	 *
+	 **/
+	public static void main(final String[] args)
+	{
+		new Client().run();
+	}
 }
-
-
