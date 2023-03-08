@@ -15,4 +15,4 @@ Each client terminates its activity after the same number of purchases (at least
 
 ## Assignment 2
 #### Package socket.clientserver.assignment2
-Implementation of the same application of assignment 1 using socket.
+Implementation of assignment 1 using socket.
