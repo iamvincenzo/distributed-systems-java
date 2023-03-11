@@ -3,6 +3,7 @@ package socket.clientserver.assignment2;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -23,6 +24,8 @@ public class Server
 
   private ServerSocket socket;
   private ThreadPoolExecutor pool;
+  
+  private ArrayList<Socket> clientSockets = new ArrayList<>();
 
   /**
    * 
@@ -39,6 +42,7 @@ public class Server
   /**
    * 
    * Runs the server code.
+   * The server waits for the connection of at least 3 clients and then start the application.
    *
   **/
   private void run()
@@ -48,6 +52,24 @@ public class Server
     
     System.out.println("Server is listening on PORT " + SPORT);
 
+    while (clientSockets.size() < 3)
+    {
+      try
+      {
+        Socket s = this.socket.accept();
+        clientSockets.add(s);
+      }
+      catch (Exception e)
+      {
+        break;
+      }
+    }
+    
+    for(Socket sk: clientSockets)
+    {
+    	this.pool.execute(new ServerThread(this, sk));
+    }
+    
     while (true)
     {
       try

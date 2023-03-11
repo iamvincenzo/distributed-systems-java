@@ -35,7 +35,6 @@ public class ServerThread implements Runnable
 		this.socket = c;
 	}
 	
-	
 	/**
 	 * 
 	 * Starts the ServerThread.

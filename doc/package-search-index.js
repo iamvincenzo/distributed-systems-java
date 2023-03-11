@@ -1,1 +1,1 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"rmi.clientserver.assignment1"}]
+packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"rmi.clientserver.assignment1"},{"l":"socket.clientserver.assignment2"}]
