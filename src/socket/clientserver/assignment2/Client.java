@@ -1,4 +1,11 @@
+/**
+ * 
+ * @author giorgia.tedaldi@studenti.unipr.it 339642
+ * @author vincenzo.fraello@studenti.unipr.it 339641
+ *
+ **/
 package socket.clientserver.assignment2;
+
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
