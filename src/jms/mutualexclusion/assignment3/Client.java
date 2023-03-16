@@ -85,20 +85,25 @@ public class Client
 			// communication phase
 			while(true)
 			{
-				if (this.clientType() == "coordinator")
-				{
-					// act as a coordinator
-				}
-				else
-				{
-					// act as a peer
-					// resource request
-					// other operations
-				}
+				System.out.println("CIAONE");
+				Thread.sleep(3000);
+//				if (this.clientType() == "coordinator")
+//				{
+//					// act as a coordinator
+//				}
+//				else
+//				{
+//					// act as a peer
+//					// resource request
+//					// other operations
+//				}
 			}
 		}
 		catch (JMSException e)
 		{
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		finally

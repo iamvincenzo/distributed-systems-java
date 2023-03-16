@@ -22,6 +22,12 @@ import org.apache.activemq.broker.BrokerService;
 
 public class ClientBroker
 {
+	enum State 
+	{
+		  IDLE,
+		  COORDINATOR
+	}
+	
 	private static final String BROKER_URL   = "tcp://localhost:61616";
 	private static final String BROKER_PROPS = "persistent=false&useJmx=false";
 	private static final String QUEUE_NAME   = "clientBroker";
@@ -29,8 +35,9 @@ public class ClientBroker
 	private static final String ID_RESPONSE = "ID_RESPONDE";
 	private static final String RESOURCE_REQUEST = "RESOURCE_REQUEST";
 	private static final String ELECTION = "ELECTION";
+	private static State myState;
 	private int INCR_ID = 0;
-
+	
 	/**
 	 * 
 	 * Receive a request and sends a reply.
@@ -59,47 +66,46 @@ public class ClientBroker
 				
 				/* TO-DO ID: the coordinator assign the ID to other clients. 
 				   Each client firstly contacs coordinator by using "clientBroker" queue. */
-
-			// Communication settings: the client/broker/coordinator creates a queue used by any client
-			Queue queue = session.createQueue(ClientBroker.QUEUE_NAME);
-			QueueReceiver receiver = session.createReceiver(queue);
-
-			while(true)
+			
+			if(getState() == State.COORDINATOR)
 			{
-				// The server waits for requests by any client
-				Message request = receiver.receive();
-				
-				System.out.println("Message: " + ((TextMessage) request).getText() + " ReplyTo: " + request.getJMSReplyTo());
-				
-				
-				if(this.clientType() == "coordinator" && request.getJMSType().compareTo(ID_REQUEST) == 0)
-				{
-					System.out.println("ID_REQUEST.");
+				// Communication settings: the client/broker/coordinator creates a queue used by any client
+				Queue queue = session.createQueue(ClientBroker.QUEUE_NAME);
+				QueueReceiver receiver = session.createReceiver(queue);
 
-					MessageProducer producer = session.createProducer(null);
-					TextMessage reply = session.createTextMessage();
-					reply.setText(Integer.toString(INCR_ID));
-					reply.setJMSType(ID_RESPONSE);
-					reply.setJMSCorrelationID(request.getJMSCorrelationID());
-					producer.send(request.getJMSReplyTo(), reply);
-					this.setINCR_ID();
-				}
-				else if(request.getJMSType().compareTo(RESOURCE_REQUEST) == 0)
+				while(true)
 				{
-					// to-do
-				}
-				else if(request.getJMSType().compareTo(RESOURCE_REQUEST) == 0)
-				{
-					// to-do
-				}
-				else if(request.getJMSType().compareTo(ELECTION) == 0)
-				{
-					// act as a normal peer
-				}
-				else
-				{
-					System.out.println("Another request.");
-					break;
+					// The server waits for requests by any client
+					Message request = receiver.receive();
+					
+					System.out.println("Message: " + ((TextMessage) request).getText() + " ReplyTo: " + request.getJMSReplyTo());
+					
+					if(request.getJMSType().compareTo(ID_REQUEST) == 0) // this.clientType() == "coordinator" && 
+					{
+						System.out.println("ID_REQUEST.");
+
+						MessageProducer producer = session.createProducer(null);
+						TextMessage reply = session.createTextMessage();
+						reply.setText(Integer.toString(INCR_ID));
+						reply.setJMSType(ID_RESPONSE);
+						reply.setJMSCorrelationID(request.getJMSCorrelationID());
+						producer.send(request.getJMSReplyTo(), reply);
+						this.setINCR_ID();
+					}
+					else if(request.getJMSType().compareTo(RESOURCE_REQUEST) == 0)
+					{
+						// to-do
+					}
+					else if(request.getJMSType().compareTo(ELECTION) == 0)
+					{
+						// act as a normal peer
+						break;
+					}
+					else
+					{
+						System.out.println("Another request.");
+						break;
+					}
 				}
 			}
 		}
@@ -123,10 +129,10 @@ public class ClientBroker
 		}
 	}
 
-	private String clientType() {
-		// TODO Auto-generated method stub
-		return null;
-	}
+//	private String clientType() {
+//		// TODO Auto-generated method stub
+//		return null;
+//	}
 
 	private void setINCR_ID() 
 	{
@@ -143,6 +149,17 @@ public class ClientBroker
 	 **/
 	public static void main(final String[] args)
 	{
+		setState(State.COORDINATOR);
 		new ClientBroker().receive();
+	}
+
+	private static void setState(State coordinator) 
+	{
+		myState = coordinator;		
+	}
+	
+	private static State getState() 
+	{
+		return myState;		
 	}
 }
