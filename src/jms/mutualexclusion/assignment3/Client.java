@@ -102,8 +102,9 @@ public class Client
 		catch (JMSException e)
 		{
 			e.printStackTrace();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
+		} 
+		catch (InterruptedException e) 
+		{
 			e.printStackTrace();
 		}
 		finally
@@ -121,14 +122,6 @@ public class Client
 			}
 		}
 	}
-
-
-	
-	private String clientType() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
 
 
 	/**
