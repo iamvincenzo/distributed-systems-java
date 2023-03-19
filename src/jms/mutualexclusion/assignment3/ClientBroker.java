@@ -1,4 +1,4 @@
-package tmp.vince;
+package jms.mutualexclusion.assignment3;
 
 import javax.jms.JMSException;
 import javax.jms.Message;
