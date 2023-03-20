@@ -17,7 +17,7 @@ import org.apache.activemq.ActiveMQConnectionFactory;
  *
  **/
 public class ClientBroker extends GenericClient
-{	
+{
 	public void receive()
 	{
 		ActiveMQConnection connection = null;
@@ -34,10 +34,49 @@ public class ClientBroker extends GenericClient
 			connection.start();
 			QueueSession session = connection.createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
 
-            // setting the role
-            this.setMyRole(GenericClient.Role.COORDINATOR);
+			/**
+			 * 
+			 * Phase 1: ids assignment
+			 * 
+			 */
 
-            this.coordinatorOperations(session);
+			// the broker assign itself the first ID
+			// setting the state
+			this.setMyState(GenericClient.State.CANDIDATE);
+			this.setCLIENT_ID(Integer.parseInt(GenericClient.BROKER_QUEUE_NAME));
+			ClientBroker.setINCR_ID();
+
+			// Communication settings: the client-broker creates a queue used by 
+			// any client to send an ID assignment request
+
+			this.myQueue = new SendReceiverQueue(session);
+			this.myQueue.createQueue(this.getCLIENT_ID());
+
+			// then assign id to other clients
+			while(GenericClient.getINCR_ID() <= GenericClient.N_CONNECTED) 
+			{
+				this.idAssignment(session, this.myQueue.getQueueReceiver());
+			}
+
+			System.out.println("All N-1 id have been assigned!");
+
+			// TO-DO : delete queue with name BROKER_QUEUE_NAME ???
+
+			// convocate an election
+			this.convocateElection(session);
+
+			while(true)
+			{
+				System.out.println("Ho inviato tutti i messaggi di elezione.");
+				Thread.sleep(10000);
+			}
+
+
+			/////////////// NOT SURE FOR THE FOLLOWING OPERATIONS ///////////////			
+            // this.setMyRole(GenericClient.Role.COORDINATOR);
+            // this.coordinatorOperations(session);
+			///////////////////////////////////////////////////////////////////
+			
 		}
 		catch (Exception e)
 		{
@@ -59,8 +98,8 @@ public class ClientBroker extends GenericClient
 		}
 	}
 
-	public static void main(final String[] args)
+	public static void main(final String[] args) throws InterruptedException
 	{
-		new ClientBroker().receive();
+		new ClientBroker().receive();				
 	}
 }

@@ -9,22 +9,24 @@ import org.apache.activemq.ActiveMQConnectionFactory;
 
 public class Client extends GenericClient
 {
-	public void send(final int n)
+	public void send()
 	{
 		ActiveMQConnection connection = null;
 
 		try
 		{			
 			// Initialization settings
-			ActiveMQConnectionFactory cf = new ActiveMQConnectionFactory(Client.BROKER_URL);
+			ActiveMQConnectionFactory cf = new ActiveMQConnectionFactory(GenericClient.BROKER_URL);
 			connection = (ActiveMQConnection) cf.createConnection();
 			connection.start();
 			QueueSession session = connection.createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
 
-           	// setting the role
-		   	this.setMyRole(GenericClient.Role.CLIENT);
+			// setting the state
+			this.setMyState(GenericClient.State.IDLE);
 
-		   	this.clientOperations(session);
+			/////////////// NOT SURE FOR THE FOLLOWING OPERATIONS ///////////////			
+			this.clientOperations(session);
+			////////////////////////////////////////////////////////////////////
 		}
 		catch (JMSException e)
 		{
@@ -50,10 +52,8 @@ public class Client extends GenericClient
 		}
 	}
 
-	public static void main(final String[] args)
+	public static void main(final String[] args) throws InterruptedException
 	{
-		final int n = 3;
-
-		new Client().send(n);
+		new Client().send();
 	}
 }
