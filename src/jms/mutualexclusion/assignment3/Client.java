@@ -23,10 +23,8 @@ public class Client extends GenericClient
 
 			// setting the state
 			this.setMyState(GenericClient.State.IDLE);
-
-			/////////////// NOT SURE FOR THE FOLLOWING OPERATIONS ///////////////			
+		
 			this.clientOperations(session);
-			////////////////////////////////////////////////////////////////////
 		}
 		catch (JMSException e)
 		{

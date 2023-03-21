@@ -44,7 +44,7 @@ public class ClientBroker extends GenericClient
 			// setting the state
 			this.setMyState(GenericClient.State.CANDIDATE);
 			this.setCLIENT_ID(Integer.parseInt(GenericClient.BROKER_QUEUE_NAME));
-			ClientBroker.setINCR_ID();
+			GenericClient.setINCR_ID();
 
 			// Communication settings: the client-broker creates a queue used by 
 			// any client to send an ID assignment request

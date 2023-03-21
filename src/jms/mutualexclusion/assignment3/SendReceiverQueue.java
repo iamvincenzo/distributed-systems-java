@@ -39,6 +39,16 @@ public class SendReceiverQueue
 		this.receiver = this.session.createReceiver(this.queue);
     }
 
+    public void sendRequest(MessageProducer prod, String text, String type, String corrId) throws JMSException
+    {
+        TextMessage msg = session.createTextMessage();
+        msg.setText(text);
+        msg.setJMSReplyTo(this.getTempDest());
+        msg.setJMSType(type);
+        msg.setJMSCorrelationID(corrId);
+        prod.send(msg);
+    }
+
     /**
      * 
      * @param text
@@ -55,15 +65,7 @@ public class SendReceiverQueue
         producerTemp.send(msg.getJMSReplyTo(), response);
     }
 
-    public void sendRequest(MessageProducer prod, String text, String type, String corrId) throws JMSException
-    {
-        TextMessage msg = session.createTextMessage();
-        msg.setText(text);
-        msg.setJMSReplyTo(this.getTempDest());
-        msg.setJMSType(type);
-        msg.setJMSCorrelationID(corrId);
-        prod.send(msg);
-    }
+    
 
     public Destination getServerQueue()
     {
@@ -93,5 +95,11 @@ public class SendReceiverQueue
     public QueueReceiver getQueueReceiver()
     {
         return this.receiver;
-    }     
+    }   
+    
+    
+    public QueueSession getSession()
+    {
+        return this.session;
+    }
 }
