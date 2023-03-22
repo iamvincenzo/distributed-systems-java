@@ -14,8 +14,14 @@ import javax.jms.MessageConsumer;
 import jms.mutualexclusion.assignment3.GenericClient;
 
 
+/**
+ * 
+ */
 public class GenericClient
 {
+	/**
+	 * 
+	 */
 	protected enum State 
 	{
 		IDLE,
@@ -26,14 +32,11 @@ public class GenericClient
 		WAITER
 	}
 
-	// client-broker parameters
-	protected static final String BROKER_URL   = "tcp://localhost:61616";
-	protected static final String BROKER_PROPS = "persistent=false&useJmx=false";
+	protected State myState;
 
-	// client-broker-coordinator queue: used by clients to get id
-	public static final String BROKER_QUEUE_NAME   = "0";
-
-	// different types of message
+	/**
+	 * 
+	 */
 	protected static final String ID_REQUEST = "ID_REQUEST";
 	protected static final String ID_RESPONSE = "ID_RESPONDE";
 	protected static final String RESOURCE_REQUEST = "RESOURCE_REQUEST";
@@ -41,27 +44,47 @@ public class GenericClient
 	protected static final String ELECTION_ACK = "ELECTION_ACK"; 
 	protected static final String COORDINATOR = "COORDINATOR";
 
+	/**
+	 * client-broker parameters
+	 * client-broker-coordinator queue: used by clients to get id
+	 */
+	protected static final String BROKER_URL   = "tcp://localhost:61616";
+	protected static final String BROKER_PROPS = "persistent=false&useJmx=false";
+	public static final String BROKER_QUEUE_NAME   = "0";
+
+	/**
+	 * 
+	 */
 	protected static final int ITER_TH_TOLERANCE = 2;
 
-	// client's state
-	protected State myState;
-
-	// client id used to identify the process and the queue. INCR_ID is used by the coordinator to
-	// assign an incremental id to other clients
+	/**
+	 * client id used to identify the process and the queue. INCR_ID is used by the 
+	 * coordinator to assign an incremental id to other clients
+	 */
 	protected static int INCR_ID = 1;
 
 	// this is the client id
 	protected int CLIENT_ID = -1;
 
 	// number of client firstly connected
-	protected static final int N_CONNECTED = 3; 
+	protected static final int N_CONNECTED = 3;
 
+	/**
+	 * 
+	 */
 	protected SendReceiverQueue myQueue;
 
+	/**
+	 * 
+	 */
 	private QueueSession session;
 	private ActiveMQConnection connection;
 
-
+	/**
+	 * 
+	 * @throws JMSException
+	 * @throws InterruptedException
+	 */
 	protected void clientOperations() throws JMSException, InterruptedException
 	{
 		int ackToReceive = 0;
@@ -191,6 +214,12 @@ public class GenericClient
 		}
 	}
 
+
+	/**
+	 * 
+	 * @param receiver
+	 * @throws JMSException
+	 */
 	public void idAssignment(QueueReceiver receiver) throws JMSException
 	{
 		// The server waits for requests by any client
@@ -207,6 +236,11 @@ public class GenericClient
 	}
 
 
+	/**
+	 * 
+	 * @return
+	 * @throws JMSException
+	 */
 	protected int convocateElection() throws JMSException
 	{
 		int start = Integer.parseInt(this.getCLIENT_ID()) + 1;
@@ -232,6 +266,10 @@ public class GenericClient
 	}
 
 
+	/**
+	 * 
+	 * @throws JMSException
+	 */
 	protected void sendCoordinatorMsg() throws JMSException
 	{
 		this.setMyState(GenericClient.State.COORDINATOR);
@@ -249,37 +287,70 @@ public class GenericClient
 		}
 	}
 
+
+	/**
+	 * 
+	 * @param state
+	 */
 	protected void setMyState(State state) 
 	{
 		this.myState = state;		
 	}
 
+
+	/**
+	 * 
+	 * @return
+	 */
 	public State getMyState() 
 	{
 		return this.myState;		
 	}
 
 
+	/**
+	 * 
+	 */
 	protected static void setINCR_ID() 
 	{
 		INCR_ID++;	
 	}
 
+
+	/**
+	 * 
+	 * @return
+	 */
 	public static int getINCR_ID()
 	{
 		return INCR_ID;
 	}
 
+
+	/**
+	 * 
+	 * @param CLIENT_ID
+	 */
 	protected void setCLIENT_ID(int CLIENT_ID) 
 	{
 		this.CLIENT_ID = CLIENT_ID;
 	}
 
+
+	/**
+	 * 
+	 * @return
+	 */
 	public String getCLIENT_ID() 
 	{
 		return Integer.toString(this.CLIENT_ID);
 	}
 
+
+	/**
+	 * 
+	 * @return
+	 */
 	protected QueueSession createSession()
 	{
 		try 
@@ -299,44 +370,50 @@ public class GenericClient
 		return this.session;
 	}
 
+
+	/**
+	 * 
+	 * @return
+	 */
 	protected ActiveMQConnection getConnection()
 	{
 		return this.connection;
 	}
 }
 
-			// int ackReceived = 0;
-			
-			// while(count >= 0)
-			// {				
-			// 	System.out.println("PRIMA DELLA RECEIVE");
-			// 	// The server waits for requests by any client
-			// 	Message reply = this.myQueue.getQueueReceiver().receive(); //3000
-			// 	System.out.println("DOPO DELLA RECEIVE");
 
-			// 	if(reply == null)
-			// 	{
-			// 		System.out.println("Client is DEAD!");
-			// 	}
-			// 	else if(reply.getJMSType().compareTo(GenericClient.ELECTION_ACK) == 0)
-			// 	{
-			// 		System.out.println("reply to (C-" + this.getCLIENT_ID() + ") ID: " 
-			// 			+ ((TextMessage) reply).getText());
-			// 		ackReceived++;
-			// 	}
+// int ackReceived = 0;
 
-			// 	count--;
-			// }
+// while(count >= 0)
+// {				
+// 	System.out.println("PRIMA DELLA RECEIVE");
+// 	// The server waits for requests by any client
+// 	Message reply = this.myQueue.getQueueReceiver().receive(); //3000
+// 	System.out.println("DOPO DELLA RECEIVE");
 
-			/*// the client is the new coordinator (case: the highest processes are down) 
-			if(ackReceived == 0)
-			{
-				// nessun processo con id più elevato mi ha mandato l'ack
-				this.sendCoordinatorMsg();
-			}*/
+// 	if(reply == null)
+// 	{
+// 		System.out.println("Client is DEAD!");
+// 	}
+// 	else if(reply.getJMSType().compareTo(GenericClient.ELECTION_ACK) == 0)
+// 	{
+// 		System.out.println("reply to (C-" + this.getCLIENT_ID() + ") ID: " 
+// 			+ ((TextMessage) reply).getText());
+// 		ackReceived++;
+// 	}
 
-		// else // the client is the new coordinator (case: higher id) 
-		// {
-		// 	System.out.println("My ID is higher!");
-		// 	// this.sendCoordinatorMsg();
-		// }
+// 	count--;
+// }
+
+/*// the client is the new coordinator (case: the highest processes are down) 
+if(ackReceived == 0)
+{
+	// nessun processo con id più elevato mi ha mandato l'ack
+	this.sendCoordinatorMsg();
+}*/
+
+// else // the client is the new coordinator (case: higher id) 
+// {
+// 	System.out.println("My ID is higher!");
+// 	// this.sendCoordinatorMsg();
+// }

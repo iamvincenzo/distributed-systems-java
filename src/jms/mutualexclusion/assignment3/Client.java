@@ -5,8 +5,14 @@ import java.util.Scanner;
 import javax.jms.JMSException;
 
 
+/**
+ * 
+ */
 public class Client extends GenericClient
 {
+	/**
+	 * 
+	 */
 	public void body()
 	{
 		try
@@ -69,6 +75,11 @@ public class Client extends GenericClient
 		}
 	}
 
+	/**
+	 * 
+	 * @param args
+	 * @throws InterruptedException
+	 */
 	public static void main(final String[] args) throws InterruptedException
 	{
 		new Client().body();

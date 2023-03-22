@@ -15,6 +15,9 @@ import org.apache.activemq.broker.BrokerFactory;
  **/
 public class ClientBroker extends GenericClient
 {
+	/**
+	 * 
+	 */
 	public void body()
 	{
 		try
@@ -94,6 +97,11 @@ public class ClientBroker extends GenericClient
 		}
 	}
 
+	/**
+	 * 
+	 * @param args
+	 * @throws InterruptedException
+	 */
 	public static void main(final String[] args) throws InterruptedException
 	{
 		new ClientBroker().body();				

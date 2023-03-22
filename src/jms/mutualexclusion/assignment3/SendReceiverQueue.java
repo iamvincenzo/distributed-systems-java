@@ -1,15 +1,19 @@
 package jms.mutualexclusion.assignment3;
 
+import javax.jms.Queue;
+import javax.jms.Message;
+import javax.jms.TextMessage;
 import javax.jms.Destination;
 import javax.jms.JMSException;
-import javax.jms.Message;
+import javax.jms.QueueSession;
+import javax.jms.QueueReceiver;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
-import javax.jms.Queue;
-import javax.jms.QueueReceiver;
-import javax.jms.QueueSession;
-import javax.jms.TextMessage;
 
+
+/**
+ * 
+ */
 public class SendReceiverQueue 
 {
     private QueueSession session;
