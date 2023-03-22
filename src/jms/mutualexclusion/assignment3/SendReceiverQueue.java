@@ -19,6 +19,8 @@ public class SendReceiverQueue
     private MessageConsumer consumer;
     private Queue queue; 
     private QueueReceiver receiver;
+
+    /*************************** USED ONLY FOR THE FIRST INTERACTION ***************************/
     
     public SendReceiverQueue(QueueSession session) throws JMSException
     {
@@ -32,30 +34,31 @@ public class SendReceiverQueue
         this.consumer = session.createConsumer(this.tempDest);
     }
 
-    public void createQueue(String id) throws JMSException
-    {
-        // once client has the ID can communicate with other peers
-		this.queue = this.session.createQueue(id);
-		this.receiver = this.session.createReceiver(this.queue);
-    }
-
-    public void sendRequest(MessageProducer prod, String text, String type, String corrId) throws JMSException
+    /**
+     * This method is used by the client to sent the ID request to the client-broker.
+     * 
+     * @param text
+     * @param type
+     * @param corrId
+     * @throws JMSException
+     */
+    public void sendIdRequest(String text, String type) throws JMSException
     {
         TextMessage msg = session.createTextMessage();
         msg.setText(text);
         msg.setJMSReplyTo(this.getTempDest());
         msg.setJMSType(type);
-        msg.setJMSCorrelationID(corrId);
-        prod.send(msg);
+        this.getProducer().send(msg);
     }
 
     /**
-     * 
+     * This method is used by the broker-client to send the ID to the client that requested it.
+     *  
      * @param text
      * @param msg - It is the message that the client received.
      * @throws JMSException
      */
-    public void sendResponse(Message msg, String text, String type) throws JMSException
+    public void sendIdResponse(Message msg, String text, String type) throws JMSException
     {
         TextMessage response = session.createTextMessage();
         MessageProducer producerTemp = session.createProducer(null);
@@ -65,41 +68,113 @@ public class SendReceiverQueue
         producerTemp.send(msg.getJMSReplyTo(), response);
     }
 
-    
+    /**
+     * 
+     * @return
+     */
+    public MessageProducer getProducer()
+    {
+        return this.producer;
+    }
+
+    /**
+     * 
+     * @return
+     */
+    public MessageConsumer getConsumer()
+    {
+        return this.consumer;
+    }
+
+    /**
+     * 
+     * @return
+     */
+    public Destination getTempDest()
+    {
+        return this.tempDest;
+    }
+
+    /*******************************************************************************************/
+
+    /**
+     * This method is used to create the peer communication queue.
+     * Once client has the ID can communicate with other peers.
+     * 
+     * @param id
+     * @throws JMSException
+     */
+    public void createQueue(String id) throws JMSException
+    {
+		this.queue = this.session.createQueue(id);
+		this.receiver = this.session.createReceiver(this.queue);
+    }
+
+    /**
+     * 
+     * @return
+     */
+    public QueueReceiver getQueueReceiver()
+    {
+        return this.receiver;
+    }   
+
+    /**
+     * 
+     * @param text
+     * @param type
+     * @param senderId
+     * @param receiverId
+     * @throws JMSException
+     */
+    public void sendMessage(String text, String type, String senderId, String receiverId) throws JMSException
+    {
+        Destination peerQueue = session.createQueue(receiverId);
+		MessageProducer producer = session.createProducer(peerQueue);
+
+        TextMessage request = session.createTextMessage();
+        request.setText(text);
+        request.setJMSType(type);
+        request.setJMSCorrelationID(senderId);
+        producer.send(request);
+    }
+}
+
+    /*public void sendGenericRequest(String text, String type, String senderId, String receiverId) throws JMSException
+    {
+        Destination peerQueue = session.createQueue(receiverId);
+		MessageProducer producer = session.createProducer(peerQueue);
+
+        TextMessage request = session.createTextMessage();
+        request.setText(text);
+        request.setJMSType(type);
+        request.setJMSCorrelationID(senderId);
+        producer.send(request);
+    }
+
+    public void sendGenericResponse(String text, String type, String senderId, String receiverId) throws JMSException
+    {
+        Destination peerQueue = session.createQueue(receiverId);
+		MessageProducer producer = session.createProducer(peerQueue);
+
+        TextMessage response = session.createTextMessage();
+        response.setText(text);
+        response.setJMSType(type);
+        response.setJMSCorrelationID(senderId);
+        producer.send(response);
+    }
+
+    public QueueSession getSession()
+    {
+        return this.session;
+    }
 
     public Destination getServerQueue()
     {
         return this.serverQueue;
     }
 
-    public Destination getTempDest()
-    {
-        return this.tempDest;
-    }
-
-    public MessageProducer getProducer()
-    {
-        return this.producer;
-    }
-
-    public MessageConsumer getConsumer()
-    {
-        return this.consumer;
-    }
-
     public Queue getQueue()
     {
         return this.queue;
-    } 
-
-    public QueueReceiver getQueueReceiver()
-    {
-        return this.receiver;
-    }   
-    
-    
-    public QueueSession getSession()
-    {
-        return this.session;
-    }
-}
+    }*/

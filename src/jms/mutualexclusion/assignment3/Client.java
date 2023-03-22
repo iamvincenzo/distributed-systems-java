@@ -1,30 +1,49 @@
 package jms.mutualexclusion.assignment3;
 
-import javax.jms.Session;
+import java.util.Scanner;
+
 import javax.jms.JMSException;
-import javax.jms.QueueSession;
-import org.apache.activemq.ActiveMQConnection;
-import org.apache.activemq.ActiveMQConnectionFactory;
 
 
 public class Client extends GenericClient
 {
-	public void send()
+	public void body()
 	{
-		ActiveMQConnection connection = null;
-
 		try
 		{			
-			// Initialization settings
-			ActiveMQConnectionFactory cf = new ActiveMQConnectionFactory(GenericClient.BROKER_URL);
-			connection = (ActiveMQConnection) cf.createConnection();
-			connection.start();
-			QueueSession session = connection.createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
+			/* initialization settings */
+			this.createSession();
 
-			// setting the state
-			this.setMyState(GenericClient.State.IDLE);
-		
-			this.clientOperations(session);
+			/* getting the initial state */
+			try (Scanner myObj = new Scanner(System.in)) 
+			{
+				while(true)
+				{
+					// System.out.print("Enter initial state (I/C): ");
+					// String state = myObj.nextLine(); 
+
+					String state = "i";
+
+					if(state.toLowerCase().compareTo("i") == 0)
+					{
+						/* setting the state */
+						this.setMyState(GenericClient.State.IDLE);
+						break;
+					}
+					else if(state.toLowerCase().compareTo("c") == 0)
+					{
+						/* setting the state */
+						this.setMyState(GenericClient.State.CANDIDATE);
+						break;
+					}
+					else
+					{
+						System.out.println("Entered state not valid. Retry with (I/C)!");
+					}
+				}
+			}
+
+			this.clientOperations();
 		}
 		catch (JMSException e)
 		{
@@ -36,11 +55,11 @@ public class Client extends GenericClient
 		}
 		finally
 		{
-			if (connection != null)
+			if (this.getConnection() != null)
 			{
 				try
 				{
-					connection.close();
+					this.getConnection().close();
 				}
 				catch (JMSException e)
 				{
@@ -52,6 +71,6 @@ public class Client extends GenericClient
 
 	public static void main(final String[] args) throws InterruptedException
 	{
-		new Client().send();
+		new Client().body();
 	}
 }

@@ -1,14 +1,11 @@
 package jms.mutualexclusion.assignment3;
 
+import java.util.Scanner;
 
-import javax.jms.Session;
 import javax.jms.QueueSession;
 import javax.jms.JMSException;
-import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.broker.BrokerService;
 import org.apache.activemq.broker.BrokerFactory;
-import org.apache.activemq.ActiveMQConnectionFactory;
-
 
 
 /**
@@ -18,65 +15,64 @@ import org.apache.activemq.ActiveMQConnectionFactory;
  **/
 public class ClientBroker extends GenericClient
 {
-	public void receive()
+	public void body()
 	{
-		ActiveMQConnection connection = null;
-		
 		try
 		{
-			// Broker initialization settings
+			/* Broker initialization settings */
 			BrokerService broker = BrokerFactory.createBroker("broker:(" + BROKER_URL + ")?" + BROKER_PROPS);
 			broker.start();
 
-			// Initialization settings
-			ActiveMQConnectionFactory cf = new ActiveMQConnectionFactory(ClientBroker.BROKER_URL);
-			connection = (ActiveMQConnection) cf.createConnection();
-			connection.start();
-			QueueSession session = connection.createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
+			/* initialization settings */
+			QueueSession session = this.createSession();
 
-			/**
-			 * 
-			 * Phase 1: ids assignment
-			 * 
-			 */
+			/* getting the initial state */
+			try (Scanner myObj = new Scanner(System.in)) 
+			{
+				while(true)
+				{
+					// System.out.print("Enter initial state (I/C): ");
+					// String state = myObj.nextLine(); 
+					 
+					String state = "c";
 
-			// the broker assign itself the first ID
-			// setting the state
-			this.setMyState(GenericClient.State.CANDIDATE);
+					if(state.toLowerCase().compareTo("i") == 0)
+					{
+						/* setting the state */
+						this.setMyState(GenericClient.State.IDLE);
+						break;
+					}
+					else if(state.toLowerCase().compareTo("c") == 0)
+					{
+						/* setting the state */
+						this.setMyState(GenericClient.State.CANDIDATE);
+						break;
+					}
+					else
+					{
+						System.out.println("Entered state not valid. Retry with (I/C)!");
+					}
+				}
+			}
+
+			/* Phase 1: ids assignment */
 			this.setCLIENT_ID(Integer.parseInt(GenericClient.BROKER_QUEUE_NAME));
-			GenericClient.setINCR_ID();
 
-			// Communication settings: the client-broker creates a queue used by 
-			// any client to send an ID assignment request
-
+			/* creation of queue with id 0 */
 			this.myQueue = new SendReceiverQueue(session);
 			this.myQueue.createQueue(this.getCLIENT_ID());
 
-			// then assign id to other clients
+			/* then assign id to other clients */
 			while(GenericClient.getINCR_ID() <= GenericClient.N_CONNECTED) 
 			{
-				this.idAssignment(session, this.myQueue.getQueueReceiver());
+				this.idAssignment(this.myQueue.getQueueReceiver());
 			}
 
-			System.out.println("All N-1 id have been assigned!");
+			System.out.println("All N-1 ID have been assigned!");
 
 			// TO-DO : delete queue with name BROKER_QUEUE_NAME ???
 
-			// convocate an election
-			this.convocateElection(session);
-
-			while(true)
-			{
-				System.out.println("Ho inviato tutti i messaggi di elezione.");
-				Thread.sleep(10000);
-			}
-
-
-			/////////////// NOT SURE FOR THE FOLLOWING OPERATIONS ///////////////			
-            // this.setMyRole(GenericClient.Role.COORDINATOR);
-            // this.coordinatorOperations(session);
-			///////////////////////////////////////////////////////////////////
-			
+			this.clientOperations();			
 		}
 		catch (Exception e)
 		{
@@ -84,11 +80,11 @@ public class ClientBroker extends GenericClient
 		}
 		finally
 		{
-			if (connection != null)
+			if (this.getConnection() != null)
 			{
 				try
 				{
-					connection.close();
+					this.getConnection().close();
 				}
 				catch (JMSException e)
 				{
@@ -100,6 +96,40 @@ public class ClientBroker extends GenericClient
 
 	public static void main(final String[] args) throws InterruptedException
 	{
-		new ClientBroker().receive();				
+		new ClientBroker().body();				
 	}
 }
+
+// convocate an election
+			/*this.convocateElection(session);
+
+			int start = Integer.parseInt(this.getCLIENT_ID()) + 1;
+			int end = GenericClient.N_CONNECTED;
+			int count = end - start;
+			@SuppressWarnings("unused")
+			int ackReceived = 0;
+
+			while(count >= 0)
+			{
+				// The server waits for requests by any client
+				Message reply = this.myQueue.getQueueReceiver().receive(); //3000
+
+				if(reply == null)
+				{
+					System.out.println("Client is DEAD!");
+				}
+				else if(reply.getJMSType().compareTo(GenericClient.ELECTION_ACK) == 0)
+				{
+					System.out.println("reply to (C-" + this.getCLIENT_ID() + ") ID: " 
+						+ ((TextMessage) reply).getText());
+					ackReceived++;
+				}
+
+				count--;
+			}
+
+			while(true)
+			{
+				// System.out.println("Ho inviato tutti i messaggi di elezione.");
+				Thread.sleep(10000);
+			}*/
