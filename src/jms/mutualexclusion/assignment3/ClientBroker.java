@@ -1,113 +1,81 @@
 package jms.mutualexclusion.assignment3;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
-import javax.jms.MessageProducer;
-import javax.jms.Queue;
-import javax.jms.QueueReceiver;
-import javax.jms.QueueSession;
-import javax.jms.Session;
-import javax.jms.TextMessage;
+import java.util.Scanner;
 
-import org.apache.activemq.ActiveMQConnection;
-import org.apache.activemq.ActiveMQConnectionFactory;
-import org.apache.activemq.broker.BrokerFactory;
+import javax.jms.QueueSession;
+import javax.jms.JMSException;
 import org.apache.activemq.broker.BrokerService;
+import org.apache.activemq.broker.BrokerFactory;
+
 
 /**
- *
- * Class providing an implementation of a client that accepts and sends requests.
+ * 
+ * This is the first client when the system is launched at the beginning
  *
  **/
-
-public class ClientBroker
+public class ClientBroker extends GenericClient
 {
-	enum State 
-	{
-		  IDLE,
-		  COORDINATOR
-	}
-	
-	private static final String BROKER_URL   = "tcp://localhost:61616";
-	private static final String BROKER_PROPS = "persistent=false&useJmx=false";
-	private static final String QUEUE_NAME   = "clientBroker";
-	private static final String ID_REQUEST = "ID_REQUEST";
-	private static final String ID_RESPONSE = "ID_RESPONDE";
-	private static final String RESOURCE_REQUEST = "RESOURCE_REQUEST";
-	private static final String ELECTION = "ELECTION";
-	private static State myState;
-	private int INCR_ID = 0;
-	
 	/**
 	 * 
-	 * Receive a request and sends a reply.
-	 *
-	 **/
-	public void receive()
+	 */
+	public void body()
 	{
-		ActiveMQConnection connection = null;
-		
 		try
 		{
-			// Broker initialization settings
+			/* Broker initialization settings */
 			BrokerService broker = BrokerFactory.createBroker("broker:(" + BROKER_URL + ")?" + BROKER_PROPS);
 			broker.start();
-			/* OPPURE UNICO CLIENT CON GESTIONE DEL BROKER CON UN IF */
 
-			// Initialization settings
-			ActiveMQConnectionFactory cf = new ActiveMQConnectionFactory(ClientBroker.BROKER_URL);
-			connection = (ActiveMQConnection) cf.createConnection();
-			connection.start();
-			QueueSession session = connection.createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
-			
-			
-			// This is the first client when the system is launched at the beginning			
-				/* TO-DO State: coordinator. */
-				
-				/* TO-DO ID: the coordinator assign the ID to other clients. 
-				   Each client firstly contacs coordinator by using "clientBroker" queue. */
-			
-			if(getState() == State.COORDINATOR)
+			/* initialization settings */
+			QueueSession session = this.createSession();
+
+			/* getting the initial state */
+			try (Scanner myObj = new Scanner(System.in)) 
 			{
-				// Communication settings: the client/broker/coordinator creates a queue used by any client
-				Queue queue = session.createQueue(ClientBroker.QUEUE_NAME);
-				QueueReceiver receiver = session.createReceiver(queue);
-
 				while(true)
 				{
-					// The server waits for requests by any client
-					Message request = receiver.receive();
-					
-					System.out.println("Message: " + ((TextMessage) request).getText() + " ReplyTo: " + request.getJMSReplyTo());
-					
-					if(request.getJMSType().compareTo(ID_REQUEST) == 0) // this.clientType() == "coordinator" && 
-					{
-						System.out.println("ID_REQUEST.");
+					// System.out.print("Enter initial state (I/C): ");
+					// String state = myObj.nextLine(); 
+					 
+					String state = "c";
 
-						MessageProducer producer = session.createProducer(null);
-						TextMessage reply = session.createTextMessage();
-						reply.setText(Integer.toString(INCR_ID));
-						reply.setJMSType(ID_RESPONSE);
-						reply.setJMSCorrelationID(request.getJMSCorrelationID());
-						producer.send(request.getJMSReplyTo(), reply);
-						this.setINCR_ID();
-					}
-					else if(request.getJMSType().compareTo(RESOURCE_REQUEST) == 0)
+					if(state.toLowerCase().compareTo("i") == 0)
 					{
-						// to-do
+						/* setting the state */
+						this.setMyState(GenericClient.State.IDLE);
+						break;
 					}
-					else if(request.getJMSType().compareTo(ELECTION) == 0)
+					else if(state.toLowerCase().compareTo("c") == 0)
 					{
-						// act as a normal peer
+						/* setting the state */
+						this.setMyState(GenericClient.State.CANDIDATE);
 						break;
 					}
 					else
 					{
-						System.out.println("Another request.");
-						break;
+						System.out.println("Entered state not valid. Retry with (I/C)!");
 					}
 				}
 			}
+
+			/* Phase 1: ids assignment */
+			this.setCLIENT_ID(Integer.parseInt(GenericClient.BROKER_QUEUE_NAME));
+
+			/* creation of queue with id 0 */
+			this.myQueue = new SendReceiverQueue(session);
+			this.myQueue.createQueue(this.getCLIENT_ID());
+
+			/* then assign id to other clients */
+			while(GenericClient.getINCR_ID() <= GenericClient.N_CONNECTED) 
+			{
+				this.idAssignment(this.myQueue.getQueueReceiver());
+			}
+
+			System.out.println("All N-1 ID have been assigned!");
+
+			// TO-DO : delete queue with name BROKER_QUEUE_NAME ???
+
+			this.clientOperations();			
 		}
 		catch (Exception e)
 		{
@@ -115,11 +83,11 @@ public class ClientBroker
 		}
 		finally
 		{
-			if (connection != null)
+			if (this.getConnection() != null)
 			{
 				try
 				{
-					connection.close();
+					this.getConnection().close();
 				}
 				catch (JMSException e)
 				{
@@ -129,37 +97,47 @@ public class ClientBroker
 		}
 	}
 
-//	private String clientType() {
-//		// TODO Auto-generated method stub
-//		return null;
-//	}
-
-	private void setINCR_ID() 
-	{
-		this.INCR_ID++;	
-	}
-
 	/**
-	 * Starts the server.
-	 *
+	 * 
 	 * @param args
-	 *
-	 * It does not need arguments.
-	 *
-	 **/
-	public static void main(final String[] args)
+	 * @throws InterruptedException
+	 */
+	public static void main(final String[] args) throws InterruptedException
 	{
-		setState(State.COORDINATOR);
-		new ClientBroker().receive();
-	}
-
-	private static void setState(State coordinator) 
-	{
-		myState = coordinator;		
-	}
-	
-	private static State getState() 
-	{
-		return myState;		
+		new ClientBroker().body();				
 	}
 }
+
+// convocate an election
+			/*this.convocateElection(session);
+
+			int start = Integer.parseInt(this.getCLIENT_ID()) + 1;
+			int end = GenericClient.N_CONNECTED;
+			int count = end - start;
+			@SuppressWarnings("unused")
+			int ackReceived = 0;
+
+			while(count >= 0)
+			{
+				// The server waits for requests by any client
+				Message reply = this.myQueue.getQueueReceiver().receive(); //3000
+
+				if(reply == null)
+				{
+					System.out.println("Client is DEAD!");
+				}
+				else if(reply.getJMSType().compareTo(GenericClient.ELECTION_ACK) == 0)
+				{
+					System.out.println("reply to (C-" + this.getCLIENT_ID() + ") ID: " 
+						+ ((TextMessage) reply).getText());
+					ackReceived++;
+				}
+
+				count--;
+			}
+
+			while(true)
+			{
+				// System.out.println("Ho inviato tutti i messaggi di elezione.");
+				Thread.sleep(10000);
+			}*/

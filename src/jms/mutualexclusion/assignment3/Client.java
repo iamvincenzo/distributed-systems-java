@@ -1,103 +1,55 @@
 package jms.mutualexclusion.assignment3;
 
-import javax.jms.Destination;
-import javax.jms.JMSException;
-import javax.jms.Message;
-import javax.jms.MessageConsumer;
-import javax.jms.MessageProducer;
-import javax.jms.Queue;
-import javax.jms.QueueReceiver;
-import javax.jms.QueueSession;
-import javax.jms.Session;
-import javax.jms.TextMessage;
+import java.util.Scanner;
 
-import org.apache.activemq.ActiveMQConnection;
-import org.apache.activemq.ActiveMQConnectionFactory;
+import javax.jms.JMSException;
+
 
 /**
- *
- * Class providing an implementation of a client that sends a request
- * and waits for an answer.
- *
- **/
-
-public class Client
+ * 
+ */
+public class Client extends GenericClient
 {
-	private static final String BROKER_URL = "tcp://localhost:61616";
-	private static final String QUEUE_NAME = "clientBroker";
-	private static final String ID_REQUEST = "ID_REQUEST";
-	private static final String ID_RESPONSE = "ID_RESPONDE";
-	private int CLIENT_ID = 0;
-
 	/**
-	 * Sends a sequence of messages.
-	 *
-	 * @param n  the number of messages.
-	 *
-	 **/
-	@SuppressWarnings("unused")
-	public void send(final int n)
+	 * 
+	 */
+	public void body()
 	{
-		ActiveMQConnection connection = null;
-
 		try
 		{			
-			// Initialization settings
-			ActiveMQConnectionFactory cf = new ActiveMQConnectionFactory(Client.BROKER_URL);
-			connection = (ActiveMQConnection) cf.createConnection();
-			connection.start();
-			QueueSession session = connection.createQueueSession(false, Session.AUTO_ACKNOWLEDGE);
-			
-			// Communication settings: the client sends messages to server
-			Destination serverQueue  = session.createQueue(QUEUE_NAME);
-			MessageProducer producer = session.createProducer(serverQueue);
+			/* initialization settings */
+			this.createSession();
 
-			// Communication settings: the client defines an endpoint used by the server to reply
-			Destination tempDest = session.createTemporaryQueue();
-			MessageConsumer consumer = session.createConsumer(tempDest);
-			
-			// firstly the client get ID
-			while(true)
+			/* getting the initial state */
+			try (Scanner myObj = new Scanner(System.in)) 
 			{
-				// The client creates the request
-				TextMessage request = session.createTextMessage();
-				request.setText("Client ID request message.");
-				request.setJMSReplyTo(tempDest);
-				request.setJMSType(ID_REQUEST);
-				request.setJMSCorrelationID("123");	
-				producer.send(request);
-				
-				// the client waits for request
-				Message reply = consumer.receive();	
-				
-				if(reply.getJMSType().compareTo(ID_RESPONSE) == 0)
+				while(true)
 				{
-					this.setCLIENT_ID(Integer.parseInt(((TextMessage) reply).getText()));
-					System.out.println("(C-" + this.getCLIENT_ID() + ") ID: " + ((TextMessage) reply).getText());
-					break;
+					// System.out.print("Enter initial state (I/C): ");
+					// String state = myObj.nextLine(); 
+
+					String state = "i";
+
+					if(state.toLowerCase().compareTo("i") == 0)
+					{
+						/* setting the state */
+						this.setMyState(GenericClient.State.IDLE);
+						break;
+					}
+					else if(state.toLowerCase().compareTo("c") == 0)
+					{
+						/* setting the state */
+						this.setMyState(GenericClient.State.CANDIDATE);
+						break;
+					}
+					else
+					{
+						System.out.println("Entered state not valid. Retry with (I/C)!");
+					}
 				}
 			}
-			
-			// once client has the ID can communicate with other peers
-			Queue queue = session.createQueue(Integer.toString(this.CLIENT_ID));
-			QueueReceiver receiver = session.createReceiver(queue);
-			
-			// communication phase
-			while(true)
-			{
-				System.out.println("CIAONE");
-				Thread.sleep(3000);
-//				if (this.clientType() == "coordinator")
-//				{
-//					// act as a coordinator
-//				}
-//				else
-//				{
-//					// act as a peer
-//					// resource request
-//					// other operations
-//				}
-			}
+
+			this.clientOperations();
 		}
 		catch (JMSException e)
 		{
@@ -109,11 +61,11 @@ public class Client
 		}
 		finally
 		{
-			if (connection != null)
+			if (this.getConnection() != null)
 			{
 				try
 				{
-					connection.close();
+					this.getConnection().close();
 				}
 				catch (JMSException e)
 				{
@@ -123,41 +75,13 @@ public class Client
 		}
 	}
 
-
 	/**
-	 * Starts the client.
-	 *
+	 * 
 	 * @param args
-	 *
-	 * It does not need arguments.
-	 *
-	 **/
-	public static void main(final String[] args)
-	{
-		final int n = 3;
-
-		new Client().send(n);
-	}
-
-	/***
-	 * 
-	 * This method is used to get the client ID that is also the queue name.
-	 *
+	 * @throws InterruptedException
 	 */
-	public int getCLIENT_ID() 
+	public static void main(final String[] args) throws InterruptedException
 	{
-		return this.CLIENT_ID;
-	}
-
-	/***
-	 * 
-	 * This method is used to set the client ID that is also the queue name.
-	 * 
-	 * @param id The ID to set
-	 *
-	 */
-	public void setCLIENT_ID(int cLIENT_ID) 
-	{
-		this.CLIENT_ID = cLIENT_ID;
+		new Client().body();
 	}
 }
