@@ -45,12 +45,8 @@ public class GenericClient
 	protected static final float K = 0.001f;
 
 	/**
-	 * MIN & MAX defines an interval used to sample
-	 * random numbers
+	 * 
 	 */
-	protected static final int MIN = 0;
-	protected static final int MAX = 100;
-
 	protected static final int RES_REQ_TH = 70;
 
 	/**
@@ -112,19 +108,110 @@ public class GenericClient
 	private boolean busy = false;
 
 
+	/*******************************************************************************************************************************/
+
+	/**
+	 * 
+	 * @param receiver
+	 * @throws JMSException
+	 */
+	public void idAssignment(QueueReceiver receiver) throws JMSException
+	{
+		// The server waits for requests by any client
+		Message request = receiver.receive();
+		
+		System.out.println("\nMessage: " + ((TextMessage) request).getText());
+
+		if(request.getJMSType().compareTo(GenericClient.ID_REQUEST) == 0)
+		{
+			System.out.println("\nID_REQUEST. Assigned: " + GenericClient.getINCR_ID() + "\n");
+			this.myQueue.sendIdResponse(request, Integer.toString(GenericClient.getINCR_ID()), GenericClient.ID_RESPONSE);
+			GenericClient.setINCR_ID();
+		}
+	}
+
+
+	/**
+	 * 
+	 * @return
+	 * @throws JMSException
+	 */
+	protected int convocateElection() throws JMSException
+	{
+		int start = Integer.parseInt(this.getCLIENT_ID()) + 1;
+		int end = GenericClient.N_CONNECTED;
+		int count = 1; // positivo così nel caso in cui start > end allora il client con id più grande è automaticamente il coordinatore
+
+		if (start <= end)
+		{
+			count = end - start + 1;
+
+			for (int i = start; i <= end; i++) 
+			{
+				System.out.println("\nI'm the process with ID-" + this.getCLIENT_ID() 
+					+ " and I'm convocating an election to client-" + i);
+
+				// Communication settings: the client-broker sends messages to other peers
+				this.myQueue.sendMessage("Election convocated...", GenericClient.ELECTION_REQ, 
+					this.getCLIENT_ID(), Integer.toString(i));
+			}
+		}
+
+		return count;
+	}
+
+
+	/**
+	 * 
+	 * @throws JMSException
+	 */
+	protected void sendCoordinatorMsg() throws JMSException
+	{
+		this.setMyState(GenericClient.State.COORDINATOR);
+
+		int last = Integer.parseInt(this.getCLIENT_ID()) - 1;
+
+		for (int i = 0; i <= last; i++) 
+		{
+			System.out.println("\nI'm the process with ID-" + this.getCLIENT_ID() 
+				+ " and I'm sending coordinator maeesage to client-" + i);
+
+			// Communication settings: the client-broker sends messages to other peers
+			this.myQueue.sendMessage("Coordinator elected...", GenericClient.COORDINATOR, 
+				this.getCLIENT_ID(), Integer.toString(i));
+		}
+	}
+
+
+	/**
+	 * 
+	 * @param MIN
+	 * @param MAX
+	 * @return
+	 */
+	protected int generateRandomNumber(int MIN, int MAX)
+	{
+		Random random = new Random();
+		return random.nextInt(MAX - MIN) + MIN;
+	}
+
+
 	/**
 	 * 
 	 * @return
 	 */
 	protected boolean checkChangeState()
 	{
-		Random random = new Random();
+		// Random random = new Random();
 
-		/* Random number used check if "stay active" */
-		int n1 = random.nextInt(MAX - MIN) + MIN;
+		// /* Random number used check if "stay active" */
+		// int n1 = random.nextInt(MAX - MIN) + MIN;
 
-		/* Random number used check if "crash" */
-		int n2 = random.nextInt(MAX - MIN) + MIN;
+		// /* Random number used check if "crash" */
+		// int n2 = random.nextInt(MAX - MIN) + MIN;
+
+		int n1 = generateRandomNumber(0, 100);
+		int n2 = generateRandomNumber(0, 100);
 
 		return (n1 * GenericClient.H > n2 * GenericClient.K);
 	} 
@@ -136,10 +223,12 @@ public class GenericClient
 	 */
 	protected boolean checkResourceRequest()
 	{
-		Random random = new Random();
+		// Random random = new Random();
 
-		/* Random number used check if "resource request" */
-		int n = random.nextInt(MAX - MIN) + MIN;
+		// /* Random number used check if "resource request" */
+		// int n = random.nextInt(MAX - MIN) + MIN;
+
+		int n = generateRandomNumber(0, 100);
 
 		return n > GenericClient.RES_REQ_TH;
 	}
@@ -190,6 +279,7 @@ public class GenericClient
 		boolean elecSent = false;
 		boolean times = true;
 		boolean pinged = false;
+		boolean requested = false;
 
 		while(true)
 		{
@@ -265,9 +355,13 @@ public class GenericClient
 					pinged = true;
 				}
 
+				int timeout = 3000;
+
 				while(true)
 				{
-					Message msg = this.myQueue.getQueueReceiver().receive(3000);	
+					// gestire che se attende la risorsa magli arriva un altro messaggio?
+					// magari la risorsa è assegnata a lui e non la considera più???
+					Message msg = this.myQueue.getQueueReceiver().receive(timeout);
 					
 					if(msg == null)
 					{
@@ -322,6 +416,15 @@ public class GenericClient
 							this.setMyState(GenericClient.State.CANDIDATE);
 							break;
 						}
+						else if(requested)
+						{
+							requested = false;
+							System.out.println("I'm NOT getting the resource... EXECUTION FAILED...");
+
+							// L’esecutore chiede l’elezione di un nuovo coordinatore se non riceve il permesso entro il periodo di attesa.
+							this.setMyState(GenericClient.State.CANDIDATE);
+							break;
+						}
 					}				
 					else if(msg.getJMSType().compareTo(GenericClient.COORDINATOR) == 0)
 					{
@@ -358,12 +461,15 @@ public class GenericClient
 						System.out.println("\nreply to (C-" + this.getCLIENT_ID() + ") Message: " 
 							+ ((TextMessage) msg).getText());
 
-						// Probably Resource request
-
+						// decide in modo casuale se chiedere l’uso della risorsa
 						if(this.checkResourceRequest())
 						{
 							this.resourceRequest();
-							break; // ??? debugging
+							// Se chiede l’uso della risorsa, allora l’esecutore fissa casualmente un timeout e 
+							// completa l’esecuzione se riceve il permesso dal coordinatore entro il periodo di attesa
+							timeout = this.generateRandomNumber(6000, 10000);
+							requested = true;
+							// break; // ??? debugging
 						}
 						else
 						{
@@ -377,12 +483,17 @@ public class GenericClient
 					{
 						if(((TextMessage) msg).getText().equals("Y"))
 						{
-							System.out.println("BAM I'm getting the resource...");
+							System.out.println("BAM I'm getting the resource... Completing execution...");
 						}
 						else
 						{
-							System.out.println("I'm NOT getting the resource...");
+							System.out.println("I'm NOT getting the resource because it is BUSY...");
 						}
+
+						// L’esecutore fissa casualmente un altro timeout prima di decidere se fare un’altra richiesta
+						int wait = generateRandomNumber(6000, 10000); 
+						Thread.sleep(wait);
+						break;
 					}
 				}
 			}
@@ -445,77 +556,7 @@ public class GenericClient
 	}
 
 
-	/**
-	 * 
-	 * @param receiver
-	 * @throws JMSException
-	 */
-	public void idAssignment(QueueReceiver receiver) throws JMSException
-	{
-		// The server waits for requests by any client
-		Message request = receiver.receive();
-		
-		System.out.println("\nMessage: " + ((TextMessage) request).getText());
-
-		if(request.getJMSType().compareTo(GenericClient.ID_REQUEST) == 0)
-		{
-			System.out.println("\nID_REQUEST. Assigned: " + GenericClient.getINCR_ID() + "\n");
-			this.myQueue.sendIdResponse(request, Integer.toString(GenericClient.getINCR_ID()), GenericClient.ID_RESPONSE);
-			GenericClient.setINCR_ID();
-		}
-	}
-
-
-	/**
-	 * 
-	 * @return
-	 * @throws JMSException
-	 */
-	protected int convocateElection() throws JMSException
-	{
-		int start = Integer.parseInt(this.getCLIENT_ID()) + 1;
-		int end = GenericClient.N_CONNECTED;
-		int count = 1; // positivo così nel caso in cui start > end allora il client con id più grande è automaticamente il coordinatore
-
-		if (start <= end)
-		{
-			count = end - start + 1;
-
-			for (int i = start; i <= end; i++) 
-			{
-				System.out.println("\nI'm the process with ID-" + this.getCLIENT_ID() 
-					+ " and I'm convocating an election to client-" + i);
-
-				// Communication settings: the client-broker sends messages to other peers
-				this.myQueue.sendMessage("Election convocated...", GenericClient.ELECTION_REQ, 
-					this.getCLIENT_ID(), Integer.toString(i));
-			}
-		}
-
-		return count;
-	}
-
-
-	/**
-	 * 
-	 * @throws JMSException
-	 */
-	protected void sendCoordinatorMsg() throws JMSException
-	{
-		this.setMyState(GenericClient.State.COORDINATOR);
-
-		int last = Integer.parseInt(this.getCLIENT_ID()) - 1;
-
-		for (int i = 0; i <= last; i++) 
-		{
-			System.out.println("\nI'm the process with ID-" + this.getCLIENT_ID() 
-				+ " and I'm sending coordinator maeesage to client-" + i);
-
-			// Communication settings: the client-broker sends messages to other peers
-			this.myQueue.sendMessage("Coordinator elected...", GenericClient.COORDINATOR, 
-				this.getCLIENT_ID(), Integer.toString(i));
-		}
-	}
+	
 
 
 	/**
