@@ -2,7 +2,6 @@ package jms.mutualexclusion.assignment3;
 
 import java.util.Scanner;
 
-import javax.jms.QueueSession;
 import javax.jms.JMSException;
 import org.apache.activemq.broker.BrokerService;
 import org.apache.activemq.broker.BrokerFactory;
@@ -27,7 +26,7 @@ public class ClientBroker extends GenericClient
 			broker.start();
 
 			/* initialization settings */
-			QueueSession session = this.createSession();
+			this.createSession();
 
 			/* getting the initial state */
 			try (Scanner myObj = new Scanner(System.in)) 
@@ -62,7 +61,7 @@ public class ClientBroker extends GenericClient
 			this.setCLIENT_ID(Integer.parseInt(GenericClient.BROKER_QUEUE_NAME));
 
 			/* creation of queue with id 0 */
-			this.myQueue = new SendReceiverQueue(session);
+			this.myQueue = new SendReceiverQueue(this.getSession());
 			this.myQueue.createQueue(this.getCLIENT_ID());
 
 			/* then assign id to other clients */

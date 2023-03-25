@@ -125,10 +125,10 @@ public class SendReceiverQueue
 
     /**
      * 
-     * @param text
-     * @param type
-     * @param senderId
-     * @param receiverId
+     * @param text The text of the message
+     * @param type The type of the message
+     * @param senderId The id of the sender
+     * @param receiverId The id of the receiver
      * @throws JMSException
      */
     public void sendMessage(String text, String type, String senderId, String receiverId) throws JMSException

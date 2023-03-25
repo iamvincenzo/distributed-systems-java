@@ -5,9 +5,13 @@ import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.springframework.util.comparator.BooleanComparator;
 
 import javax.jms.Session;
 import javax.jms.QueueSession;
+
+import java.util.Random;
+
 import javax.jms.JMSException;
 import javax.jms.QueueReceiver;
 import javax.jms.MessageConsumer;
@@ -35,6 +39,22 @@ public class GenericClient
 	protected State myState;
 
 	/**
+	 * H is the probability to stay active 
+	 * K is the probability to crash
+	 */
+	protected static final float H = 0.02f;
+	protected static final float K = 0.001f;
+
+	/**
+	 * MIN & MAX defines an interval used to sample
+	 * random numbers
+	 */
+	protected static final int MIN = 0;
+	protected static final int MAX = 100;
+
+	protected static final int RES_REQ_TH = 70;
+
+	/**
 	 * 
 	 */
 	protected static final String ID_REQUEST = "ID_REQUEST";
@@ -43,6 +63,10 @@ public class GenericClient
 	protected static final String ELECTION_REQ = "ELECTION_REQ";
 	protected static final String ELECTION_ACK = "ELECTION_ACK"; 
 	protected static final String COORDINATOR = "COORDINATOR";
+	protected static final String COORD_PING = "COORD_PING";
+	protected static final String COORD_ALIVE = "COORD_ALIVE";
+	protected static final String RESOURCE_REQ = "RESOURCE_REQ";
+	protected static final String RESOURCE_RESP = "RESOURCE_RESP";
 
 	/**
 	 * client-broker parameters
@@ -51,6 +75,8 @@ public class GenericClient
 	protected static final String BROKER_URL   = "tcp://localhost:61616";
 	protected static final String BROKER_PROPS = "persistent=false&useJmx=false";
 	public static final String BROKER_QUEUE_NAME   = "0";
+
+	public String COORD_ID = "-1";
 
 	/**
 	 * 
@@ -79,6 +105,81 @@ public class GenericClient
 	 */
 	private QueueSession session;
 	private ActiveMQConnection connection;
+
+
+	/**
+	 * 
+	 */
+	private boolean busy = false;
+
+
+	/**
+	 * 
+	 * @return
+	 */
+	protected boolean checkChangeState()
+	{
+		Random random = new Random();
+
+		/* Random number used check if "stay active" */
+		int n1 = random.nextInt(MAX - MIN) + MIN;
+
+		/* Random number used check if "crash" */
+		int n2 = random.nextInt(MAX - MIN) + MIN;
+
+		// System.out.println("N1: " + n1 + ", N2: " + n2 + " n1*H: " 
+		// 	+ n1 * GenericClient.H  + ", n2*K: " + n2 * GenericClient.K);
+
+		return (n1 * GenericClient.H > n2 * GenericClient.K);
+	} 
+
+
+	/**
+	 * 
+	 * @return
+	 */
+	protected boolean checkResourceRequest()
+	{
+		Random random = new Random();
+
+		/* Random number used check if "resource request" */
+		int n = random.nextInt(MAX - MIN) + MIN;
+
+		return n > GenericClient.RES_REQ_TH;
+	}
+
+
+
+	/**
+	 * @throws JMSException
+	 * 
+	 */
+	protected void resourceRequest() throws JMSException
+	{
+		System.out.println("\n(C-" + this.getCLIENT_ID() + 
+			") I'm requesting the resource to the coordinator...");
+
+		this.myQueue.sendMessage("Resource requets...", GenericClient.RESOURCE_REQ, 
+			this.getCLIENT_ID(), this.COORD_ID);
+	}
+
+
+	/**
+	 * 
+	 */
+	protected void assignResource()
+	{
+		// to do
+	}
+
+
+	/**
+	 * 
+	 */
+	protected void checkIfAlive()
+	{
+		// to do
+	}
 
 	/**
 	 * 
@@ -121,6 +222,25 @@ public class GenericClient
 			}
 
 
+			/* The peer checks if he has to change its state */
+			if(this.checkChangeState() || (this.getCOORD_ID().equals("-1") 
+				&& this.getMyState() == GenericClient.State.CANDIDATE))
+			{
+				System.out.println("\nI'm ALIVE...");
+
+				// ????
+				if (this.getMyState() == GenericClient.State.DEAD)
+				{
+					this.setMyState(GenericClient.State.IDLE);
+				}
+			}
+			else
+			{
+				System.out.println("\nI'm DEAD...");
+				this.setMyState(GenericClient.State.DEAD);
+			}
+
+
 			// gestione se sei candidato indici l'elezione
 			if(this.getMyState() == GenericClient.State.CANDIDATE)
 			{
@@ -134,38 +254,16 @@ public class GenericClient
 			{
 				times = false;
 
-				// if(!this.getCLIENT_ID().equals("0"))
-				// {
-				// 	this.myQueue = new SendReceiverQueue(session);
+				// ping the coordinator and the coordinator exists
+				if(!this.getCOORD_ID().equals("-1"))
+				{
+					System.out.println("Client-" + this.getCLIENT_ID() 
+						+ " Check if coordinator is alive (COORD_PING)...");
 
-				// 	/**
-				// 	 * INITIALIZATION PHASE: firstly the client gets the ID   
-				// 	 */			
-				// 	MessageConsumer consumer = this.myQueue.getConsumer(); 
-				// 	while(true)
-				// 	{
-				// 		this.myQueue.sendIdRequest("Client ID request message.", GenericClient.ID_REQUEST);
-				// 		Message reply = consumer.receive(); // the client waits for request	
-
-				// 		if(reply.getJMSType().compareTo(GenericClient.ID_RESPONSE) == 0)
-				// 		{
-				// 			this.setCLIENT_ID(Integer.parseInt(((TextMessage) reply).getText()));
-				// 			System.out.println("\n(C-" + this.getCLIENT_ID() + ") Message ID-response: " 
-				// 				+ ((TextMessage) reply).getText());
-				// 			break;
-				// 		}
-				// 	}
-
-				// 	this.myQueue.createQueue(this.getCLIENT_ID());
-				// }
-				
-				/**
-				 * COMMUNICATION PHASE: once client has the ID can communicate with other peers
-				 */
-				// this.myQueue.createQueue(this.getCLIENT_ID());
-				// int ackToReceive = 0; // not sure to cancel ???
-				// int iterTolerance = 0; // not sure to cancel ???
-				// boolean elecSent = false; // not sure to cancel ???
+					this.myQueue.sendMessage("Client-" + this.getCLIENT_ID() 
+							+ " Check if coordinator is alive (COORD_PING)...", 
+							GenericClient.COORD_PING, this.getCLIENT_ID(), this.getCOORD_ID());
+				}
 
 				while(true)
 				{
@@ -184,12 +282,16 @@ public class GenericClient
 							elecSent = false; // not sure ???
 							
 							this.sendCoordinatorMsg();
+							break;
 						}
 					}				
 					else if(msg.getJMSType().compareTo(GenericClient.COORDINATOR) == 0)
 					{
 						System.out.println("\n(C-" + this.getCLIENT_ID() + ") There's a new coordinator with ID: " 
 							+ msg.getJMSCorrelationID());
+							
+						this.setCOORD_ID(msg.getJMSCorrelationID());
+						break; // there is a new coordinator so: restart the loop
 					}
 					else if(msg.getJMSType().compareTo(GenericClient.ELECTION_REQ) == 0)
 					{
@@ -208,6 +310,91 @@ public class GenericClient
 							+ ((TextMessage) msg).getText());
 						
 						ackToReceive--;
+					}
+					else if(msg.getJMSType().compareTo(GenericClient.COORD_ALIVE) == 0)
+					{
+						System.out.println("\nreply to (C-" + this.getCLIENT_ID() + ") Message: " 
+							+ ((TextMessage) msg).getText());
+
+						// Probably Resource request
+
+						if(this.checkResourceRequest())
+						{
+							this.resourceRequest();
+						}
+						else
+						{
+							System.out.println("\n(C-" + this.getCLIENT_ID() + 
+								") I'm NOT requesting the resource to the coordinator...");
+							
+							break; // se non chiede la risorsa, allora deve ricontrollare il suo stato per capire se deve rimanere vivo o morire, poi eventualmente se rimane vivo, verifica se il coordinatore è alive per richiedere nuovamente la risorsa
+						}
+					}
+					else if(msg.getJMSType().compareTo(GenericClient.RESOURCE_RESP) == 0)
+					{
+						if(((TextMessage) msg).getText().equals("Y"))
+						{
+							System.out.println("BAM I'm getting the resource...");
+						}
+						else
+						{
+							System.out.println("I'm NOT getting the resource...");
+						}
+					}
+				}
+			}
+			else if(this.getMyState() == GenericClient.State.DEAD)
+			{
+				Thread.sleep(6000);
+			}
+			else if(this.getMyState() == GenericClient.State.COORDINATOR)
+			{
+				// assegnare l’uso della risorsa a un esecutore
+				// individuare se l’esecutore che ha in uso la risorsa non è più attivo
+
+				while(true)
+				{
+					Message msg = this.myQueue.getQueueReceiver().receive(3000);	
+					
+					if(msg == null)
+					{
+						// to do ???
+						System.out.println("MSG NULL");
+						Thread.sleep(2000);
+					}				
+					else if(msg.getJMSType().compareTo(GenericClient.COORD_PING) == 0)
+					{
+						System.out.println("\n(C-" + this.getCLIENT_ID() + ") I'm the coordinator, C-" 
+							+ msg.getJMSCorrelationID() + " contacted me for PING...");
+							
+						this.myQueue.sendMessage("I'm ALIVE...", GenericClient.COORD_ALIVE, 
+							this.getCLIENT_ID(), msg.getJMSCorrelationID());
+					}
+					else if(msg.getJMSType().compareTo(GenericClient.RESOURCE_REQ) == 0)
+					{
+						System.out.println("\n(C-" + this.getCLIENT_ID() + ") I'm the coordinator, C-" 
+							+ msg.getJMSCorrelationID() + " contacted me for RESOURCE REQUET...");
+							
+						// if risorsa libera ok else no
+						
+						String result = "";
+
+						if(!busy)
+						{
+							result = "Y";
+							this.setBusy(true);
+						}
+						else
+						{
+							result = "N";
+						}
+
+						this.myQueue.sendMessage(result, GenericClient.RESOURCE_RESP, 
+							this.getCLIENT_ID(), msg.getJMSCorrelationID());
+					}
+					else
+					{
+						System.out.println("YOU ARE WRONGGG!!");
 					}
 				}
 			}
@@ -346,6 +533,24 @@ public class GenericClient
 		return Integer.toString(this.CLIENT_ID);
 	}
 
+	/**
+	 * 
+	 * @return
+	 */
+	public String getCOORD_ID()
+	{
+		return this.COORD_ID;
+	}
+
+
+	/**
+	 * 
+	 * @param id
+	 */
+	protected void setCOORD_ID(String id)
+	{
+		this.COORD_ID = id;
+	}
 
 	/**
 	 * 
@@ -379,41 +584,31 @@ public class GenericClient
 	{
 		return this.connection;
 	}
+
+	/**
+	 * 
+	 * @return
+	 */
+	protected QueueSession getSession()
+	{
+		return this.session;
+	}
+
+	/**
+	 * 
+	 * @param val
+	 */
+	private void setBusy(boolean val)
+	{
+		this.busy = val;
+	}
+
+	/**
+	 * 
+	 * @return
+	 */
+	private boolean getBusy()
+	{
+		return this.busy;
+	}
 }
-
-
-// int ackReceived = 0;
-
-// while(count >= 0)
-// {				
-// 	System.out.println("PRIMA DELLA RECEIVE");
-// 	// The server waits for requests by any client
-// 	Message reply = this.myQueue.getQueueReceiver().receive(); //3000
-// 	System.out.println("DOPO DELLA RECEIVE");
-
-// 	if(reply == null)
-// 	{
-// 		System.out.println("Client is DEAD!");
-// 	}
-// 	else if(reply.getJMSType().compareTo(GenericClient.ELECTION_ACK) == 0)
-// 	{
-// 		System.out.println("reply to (C-" + this.getCLIENT_ID() + ") ID: " 
-// 			+ ((TextMessage) reply).getText());
-// 		ackReceived++;
-// 	}
-
-// 	count--;
-// }
-
-/*// the client is the new coordinator (case: the highest processes are down) 
-if(ackReceived == 0)
-{
-	// nessun processo con id più elevato mi ha mandato l'ack
-	this.sendCoordinatorMsg();
-}*/
-
-// else // the client is the new coordinator (case: higher id) 
-// {
-// 	System.out.println("My ID is higher!");
-// 	// this.sendCoordinatorMsg();
-// }
