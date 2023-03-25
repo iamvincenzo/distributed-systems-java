@@ -188,9 +188,11 @@ public class GenericClient
 	protected void clientOperations() throws JMSException, InterruptedException
 	{
 		int ackToReceive = 0;
+		int ackReceived = 0;
 		int iterTolerance = 0;
 		boolean elecSent = false;
 		boolean times = true;
+		boolean pinged = false;
 
 		while(true)
 		{
@@ -220,7 +222,6 @@ public class GenericClient
 				this.myQueue.createQueue(this.getCLIENT_ID());
 			}
 
-
 			/* The peer checks if he has to change its state */
 			if(this.checkChangeState() || (this.getCOORD_ID().equals("-1") 
 				&& this.getMyState() == GenericClient.State.CANDIDATE))
@@ -239,11 +240,12 @@ public class GenericClient
 				this.setMyState(GenericClient.State.DEAD);
 			}
 
-
 			// gestione se sei candidato indici l'elezione
 			if(this.getMyState() == GenericClient.State.CANDIDATE)
 			{
 				times = false;
+
+				ackReceived = 0; // ogni volta che convochi un'elezione si inizializza il numero di ack ricevuti
 				ackToReceive = this.convocateElection();
 				elecSent = true;
 
@@ -253,15 +255,17 @@ public class GenericClient
 			{
 				times = false;
 
-				// ping the coordinator and the coordinator exists
+				// ping the coordinator and the coordinator exists ???? reset to -1???
 				if(!this.getCOORD_ID().equals("-1"))
 				{
-					System.out.println("Client-" + this.getCLIENT_ID() 
+					System.out.println("(C-" + this.getCLIENT_ID() + "): " 
 						+ " Check if coordinator is alive (COORD_PING)...");
 
 					this.myQueue.sendMessage("Client-" + this.getCLIENT_ID() 
 							+ " Check if coordinator is alive (COORD_PING)...", 
 							GenericClient.COORD_PING, this.getCLIENT_ID(), this.getCOORD_ID());
+					
+					pinged = true;
 				}
 
 				while(true)
@@ -272,15 +276,53 @@ public class GenericClient
 					{
 						iterTolerance++;
 
+						if(this.getCLIENT_ID().equals("1"))
+							System.out.println("C-" + this.getCLIENT_ID() + "elecSent: " + elecSent 
+								+ ", ackToReceive: " + ackToReceive + ", ackReceived: " + ackReceived + ", iterTolerance: " + iterTolerance);
+
 						/* the client is the new coordinator (case: the highest processes are down) */
-						if(elecSent && ackToReceive > 0 && iterTolerance >= GenericClient.ITER_TH_TOLERANCE)
+						if(elecSent && ackToReceive > 0 && ackReceived == 0 && iterTolerance >= GenericClient.ITER_TH_TOLERANCE)
 						{
 							System.out.println("\nI'm C-" + this.getCLIENT_ID() + " the new coordinator...");
-							ackToReceive = 0; // not sure ???
-							iterTolerance = 0; // not sure ???
-							elecSent = false; // not sure ???
+							ackToReceive = 0;
+							iterTolerance = 0; 
+							elecSent = false; 
 							
 							this.sendCoordinatorMsg();
+							break;
+
+							/*///// PREVIEW	/// 
+							boolean h = false;
+							while(true)
+							{
+								msg = this.myQueue.getQueueReceiver().receive(3000);
+								if(msg == null)
+								{
+									h = true;
+									break;
+								}	
+								else
+								{
+									if(msg.getJMSType().compareTo(GenericClient.ELECTION_REQ) == 0)
+									{
+										System.out.println("\n(C-" + this.getCLIENT_ID() + ") Message: " 
+											+ ((TextMessage) msg).getText() + " received by: " + msg.getJMSCorrelationID());
+
+										this.myQueue.sendMessage("Client-" + this.getCLIENT_ID() 
+											+ " ACK", GenericClient.ELECTION_ACK, this.getCLIENT_ID(), msg.getJMSCorrelationID());
+									}
+								}
+							}
+							if(h) break;
+							/// PREVIEW ////*/
+
+						}
+						else if(pinged && iterTolerance >= GenericClient.ITER_TH_TOLERANCE) // il coordinatore non mi risponde
+						{
+							iterTolerance = 0;
+							pinged = false;
+
+							this.setMyState(GenericClient.State.CANDIDATE);
 							break;
 						}
 					}				
@@ -300,6 +342,7 @@ public class GenericClient
 						this.myQueue.sendMessage("Client-" + this.getCLIENT_ID() 
 							+ " ACK", GenericClient.ELECTION_ACK, this.getCLIENT_ID(), msg.getJMSCorrelationID());
 
+						ackReceived = 0; // ogni volta che convochi un'elezione si inizializza il numero di ack ricevuti
 						ackToReceive = this.convocateElection();
 						elecSent = true;
 					}
@@ -309,9 +352,12 @@ public class GenericClient
 							+ ((TextMessage) msg).getText());
 						
 						ackToReceive--;
+						ackReceived++;
 					}
 					else if(msg.getJMSType().compareTo(GenericClient.COORD_ALIVE) == 0)
 					{
+						pinged = false;
+
 						System.out.println("\nreply to (C-" + this.getCLIENT_ID() + ") Message: " 
 							+ ((TextMessage) msg).getText());
 
@@ -320,6 +366,7 @@ public class GenericClient
 						if(this.checkResourceRequest())
 						{
 							this.resourceRequest();
+							break; // ??? debugging
 						}
 						else
 						{
@@ -341,10 +388,6 @@ public class GenericClient
 						}
 					}
 				}
-			}
-			else if(this.getMyState() == GenericClient.State.DEAD)
-			{
-				Thread.sleep(6000);
 			}
 			else if(this.getMyState() == GenericClient.State.COORDINATOR)
 			{
@@ -393,9 +436,13 @@ public class GenericClient
 					}
 					else
 					{
-						System.out.println("YOU ARE WRONGGG!!");
+						System.out.println("YOU ARE WRONGGG!! type: " + msg.getJMSType());
 					}
 				}
+			}
+			else if(this.getMyState() == GenericClient.State.DEAD)
+			{
+				Thread.sleep(6000);
 			}
 		}
 	}
@@ -435,7 +482,7 @@ public class GenericClient
 
 		if (start <= end)
 		{
-			count = end - start;
+			count = end - start + 1;
 
 			for (int i = start; i <= end; i++) 
 			{
@@ -606,6 +653,7 @@ public class GenericClient
 	 * 
 	 * @return
 	 */
+	@SuppressWarnings("unused")
 	private boolean getBusy()
 	{
 		return this.busy;
