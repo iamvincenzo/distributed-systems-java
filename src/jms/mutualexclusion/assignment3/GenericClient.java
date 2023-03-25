@@ -5,7 +5,6 @@ import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnection;
 import org.apache.activemq.ActiveMQConnectionFactory;
-import org.springframework.util.comparator.BooleanComparator;
 
 import javax.jms.Session;
 import javax.jms.QueueSession;
