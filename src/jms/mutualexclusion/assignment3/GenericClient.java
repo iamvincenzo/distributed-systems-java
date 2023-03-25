@@ -126,9 +126,6 @@ public class GenericClient
 		/* Random number used check if "crash" */
 		int n2 = random.nextInt(MAX - MIN) + MIN;
 
-		// System.out.println("N1: " + n1 + ", N2: " + n2 + " n1*H: " 
-		// 	+ n1 * GenericClient.H  + ", n2*K: " + n2 * GenericClient.K);
-
 		return (n1 * GenericClient.H > n2 * GenericClient.K);
 	} 
 
