@@ -359,7 +359,7 @@ public class GenericClient
 
 				while(true)
 				{
-					// gestire che se attende la risorsa magli arriva un altro messaggio?
+					// gestire che se attende la risorsa ma gli arriva un altro messaggio?
 					// magari la risorsa è assegnata a lui e non la considera più???
 					Message msg = this.myQueue.getQueueReceiver().receive(timeout);
 					
@@ -464,18 +464,18 @@ public class GenericClient
 						// decide in modo casuale se chiedere l’uso della risorsa
 						if(this.checkResourceRequest())
 						{
-							this.resourceRequest();
+							requested = true;
 							// Se chiede l’uso della risorsa, allora l’esecutore fissa casualmente un timeout e 
 							// completa l’esecuzione se riceve il permesso dal coordinatore entro il periodo di attesa
 							timeout = this.generateRandomNumber(6000, 10000);
-							requested = true;
-							// break; // ??? debugging
+							this.resourceRequest();
 						}
 						else
 						{
 							System.out.println("\n(C-" + this.getCLIENT_ID() + 
 								") I'm NOT requesting the resource to the coordinator...");
-							
+							int wait = generateRandomNumber(6000, 10000); 
+							Thread.sleep(wait);
 							break; // se non chiede la risorsa, allora deve ricontrollare il suo stato per capire se deve rimanere vivo o morire, poi eventualmente se rimane vivo, verifica se il coordinatore è alive per richiedere nuovamente la risorsa
 						}
 					}
@@ -484,16 +484,20 @@ public class GenericClient
 						if(((TextMessage) msg).getText().equals("Y"))
 						{
 							System.out.println("BAM I'm getting the resource... Completing execution...");
+							// L’esecutore fissa casualmente un altro timeout prima di decidere se fare un’altra richiesta
+							int wait = generateRandomNumber(6000, 10000); 
+							Thread.sleep(wait);
+							// this.freeResource(); // to do
+							break;
 						}
 						else
 						{
-							System.out.println("I'm NOT getting the resource because it is BUSY...");
+							System.out.println("I'm NOT getting the resource because it's BUSY...");
+							// L’esecutore fissa casualmente un altro timeout prima di decidere se fare un’altra richiesta
+							int wait = generateRandomNumber(6000, 10000); 
+							Thread.sleep(wait);
+							break;
 						}
-
-						// L’esecutore fissa casualmente un altro timeout prima di decidere se fare un’altra richiesta
-						int wait = generateRandomNumber(6000, 10000); 
-						Thread.sleep(wait);
-						break;
 					}
 				}
 			}

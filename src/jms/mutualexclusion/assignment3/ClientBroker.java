@@ -72,8 +72,6 @@ public class ClientBroker extends GenericClient
 
 			System.out.println("All N-1 ID have been assigned!");
 
-			// TO-DO : delete queue with name BROKER_QUEUE_NAME ???
-
 			this.clientOperations();			
 		}
 		catch (Exception e)
