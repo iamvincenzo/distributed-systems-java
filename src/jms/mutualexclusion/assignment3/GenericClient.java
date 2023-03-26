@@ -551,6 +551,8 @@ public class GenericClient
 							else
 							{
 								result = "N";
+								System.out.println("\n(C-" + this.getCLIENT_ID() + ") I'm the coordinator, I'm not assigning" + 
+									" the resource to C-" + resReq.getJMSCorrelationID() + "...");
 							}
 
 							this.myQueue.sendMessage(result, GenericClient.RESOURCE_RESP, 
