@@ -62,7 +62,7 @@ public class ClientBroker extends GenericClient
 
 			/* creation of queue with id 0 */
 			this.myQueue = new SendReceiverQueue(this.getSession());
-			this.myQueue.createQueue(this.getCLIENT_ID());
+			this.myQueue.createQueue(this.getCLIENT_ID(), 0);
 
 			/* then assign id to other clients */
 			while(GenericClient.getINCR_ID() <= GenericClient.N_CONNECTED) 

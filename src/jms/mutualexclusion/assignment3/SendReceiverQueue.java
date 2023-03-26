@@ -23,6 +23,8 @@ public class SendReceiverQueue
     private MessageConsumer consumer;
     private Queue queue; 
     private QueueReceiver receiver;
+    private Queue resourceQueue; 
+    private QueueReceiver resourceReceiver;
 
     /*************************** USED ONLY FOR THE FIRST INTERACTION ***************************/
     
@@ -108,10 +110,18 @@ public class SendReceiverQueue
      * @param id
      * @throws JMSException
      */
-    public void createQueue(String id) throws JMSException
+    public void createQueue(String id, int type) throws JMSException
     {
-		this.queue = this.session.createQueue(id);
-		this.receiver = this.session.createReceiver(this.queue);
+        if (type == 0)
+        {
+            this.queue = this.session.createQueue(id);
+            this.receiver = this.session.createReceiver(this.queue);
+        }
+        else
+        {
+            this.resourceQueue = this.session.createQueue(id);
+            this.resourceReceiver = this.session.createReceiver(this.resourceQueue);
+        }
     }
 
     /**
@@ -122,6 +132,16 @@ public class SendReceiverQueue
     {
         return this.receiver;
     }   
+
+
+    /**
+     * 
+     * @return
+     */
+    protected QueueReceiver getResourceReceiver()
+    {
+        return this.resourceReceiver;
+    }
 
     /**
      * 

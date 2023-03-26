@@ -62,6 +62,7 @@ public class GenericClient
 	protected static final String COORD_ALIVE = "COORD_ALIVE";
 	protected static final String RESOURCE_REQ = "RESOURCE_REQ";
 	protected static final String RESOURCE_RESP = "RESOURCE_RESP";
+	protected static final String FREE_RESOURCE = "FREE_RESOURCE";
 
 	/**
 	 * client-broker parameters
@@ -106,6 +107,13 @@ public class GenericClient
 	 * 
 	 */
 	private boolean busy = false;
+
+
+	/**
+	 * 
+	 */
+	@SuppressWarnings("unused")
+	private String resourceUser = "";
 
 
 	/*******************************************************************************************************************************/
@@ -245,16 +253,30 @@ public class GenericClient
 			") I'm requesting the resource to the coordinator...");
 
 		this.myQueue.sendMessage("Resource requets...", GenericClient.RESOURCE_REQ, 
-			this.getCLIENT_ID(), this.COORD_ID);
+			this.getCLIENT_ID(), "R-" + this.COORD_ID);
+	}
+
+
+	/**
+	 * 
+	 * @throws JMSException
+	 */
+	protected void freeResource() throws JMSException
+	{
+		System.out.println("\n(C-" + this.getCLIENT_ID() + 
+			") I'm freeing the resource...");
+
+		this.myQueue.sendMessage("Resource free...", GenericClient.FREE_RESOURCE, 
+			this.getCLIENT_ID(), "R-" + this.COORD_ID);
 	}
 
 
 	/**
 	 * 
 	 */
-	protected void assignResource()
+	protected void assignResource(String id)
 	{
-		// to do
+		this.resourceUser = id;
 	}
 
 
@@ -306,7 +328,7 @@ public class GenericClient
 					}
 				}
 
-				this.myQueue.createQueue(this.getCLIENT_ID());
+				this.myQueue.createQueue(this.getCLIENT_ID(), 0);
 			}
 
 			/* The peer checks if he has to change its state */
@@ -365,11 +387,7 @@ public class GenericClient
 					
 					if(msg == null)
 					{
-						iterTolerance++;
-
-						if(this.getCLIENT_ID().equals("1"))
-							System.out.println("C-" + this.getCLIENT_ID() + "elecSent: " + elecSent 
-								+ ", ackToReceive: " + ackToReceive + ", ackReceived: " + ackReceived + ", iterTolerance: " + iterTolerance);
+						iterTolerance++;	
 
 						/* the client is the new coordinator (case: the highest processes are down) */
 						if(elecSent && ackToReceive > 0 && ackReceived == 0 && iterTolerance >= GenericClient.ITER_TH_TOLERANCE)
@@ -379,11 +397,13 @@ public class GenericClient
 							iterTolerance = 0; 
 							elecSent = false; 
 							
+							// creation of the queue used for resource requests
+							this.myQueue.createQueue("R-" + this.getCLIENT_ID(), 1);
+							
 							this.sendCoordinatorMsg();
 							break;
 
-							/*///// PREVIEW	/// 
-							boolean h = false;
+							/*boolean h = false;
 							while(true)
 							{
 								msg = this.myQueue.getQueueReceiver().receive(3000);
@@ -404,8 +424,7 @@ public class GenericClient
 									}
 								}
 							}
-							if(h) break;
-							/// PREVIEW ////*/
+							if(h) break;*/
 
 						}
 						else if(pinged && iterTolerance >= GenericClient.ITER_TH_TOLERANCE) // il coordinatore non mi risponde
@@ -448,8 +467,8 @@ public class GenericClient
 					}
 					else if(msg.getJMSType().compareTo(GenericClient.ELECTION_ACK) == 0)
 					{
-						System.out.println("\nreply to (C-" + this.getCLIENT_ID() + ") Message: " 
-							+ ((TextMessage) msg).getText());
+						System.out.println("\n (C-" + this.getCLIENT_ID() + ") Peer " + 
+							msg.getJMSCorrelationID() + " message: " + ((TextMessage) msg).getText());
 						
 						ackToReceive--;
 						ackReceived++;
@@ -458,8 +477,8 @@ public class GenericClient
 					{
 						pinged = false;
 
-						System.out.println("\nreply to (C-" + this.getCLIENT_ID() + ") Message: " 
-							+ ((TextMessage) msg).getText());
+						System.out.println("\n (C-" + this.getCLIENT_ID() + ") Peer " + 
+							msg.getJMSCorrelationID() + " message: " + ((TextMessage) msg).getText());
 
 						// decide in modo casuale se chiedere l’uso della risorsa
 						if(this.checkResourceRequest())
@@ -487,7 +506,7 @@ public class GenericClient
 							// L’esecutore fissa casualmente un altro timeout prima di decidere se fare un’altra richiesta
 							int wait = generateRandomNumber(6000, 10000); 
 							Thread.sleep(wait);
-							// this.freeResource(); // to do
+							this.freeResource();
 							break;
 						}
 						else
@@ -508,6 +527,45 @@ public class GenericClient
 
 				while(true)
 				{
+					/* the coordinator looks for resource request/release */ 
+					Message resReq = this.myQueue.getResourceReceiver().receiveNoWait();
+
+					if (!(resReq == null))
+					{
+						if(resReq.getJMSType().compareTo(GenericClient.RESOURCE_REQ) == 0)
+						{
+							System.out.println("\n(C-" + this.getCLIENT_ID() + ") I'm the coordinator, C-" 
+								+ resReq.getJMSCorrelationID() + " contacted me for RESOURCE REQUEST...");
+							
+							String result = "";
+
+							if(!busy)
+							{
+								result = "Y";
+								this.setBusy(true);
+								this.assignResource(resReq.getJMSCorrelationID());
+								
+								System.out.println("\n(C-" + this.getCLIENT_ID() + ") I'm the coordinator, and I assigned" + 
+									" the resource to C-" + resReq.getJMSCorrelationID() + "...");
+							}
+							else
+							{
+								result = "N";
+							}
+
+							this.myQueue.sendMessage(result, GenericClient.RESOURCE_RESP, 
+								this.getCLIENT_ID(), resReq.getJMSCorrelationID());
+						}
+						else if(resReq.getJMSType().compareTo(GenericClient.FREE_RESOURCE) == 0)
+						{
+							this.setBusy(false);
+							this.assignResource("");
+
+							System.out.println("\n(C-" + this.getCLIENT_ID() + ") I'm the coordinator, C-" 
+								+ resReq.getJMSCorrelationID() + " contacted me for RESOURCE FREEING...");
+						}
+					}
+
 					Message msg = this.myQueue.getQueueReceiver().receive(3000);	
 					
 					if(msg == null)
@@ -522,28 +580,6 @@ public class GenericClient
 							+ msg.getJMSCorrelationID() + " contacted me for PING...");
 							
 						this.myQueue.sendMessage("I'm ALIVE...", GenericClient.COORD_ALIVE, 
-							this.getCLIENT_ID(), msg.getJMSCorrelationID());
-					}
-					else if(msg.getJMSType().compareTo(GenericClient.RESOURCE_REQ) == 0)
-					{
-						System.out.println("\n(C-" + this.getCLIENT_ID() + ") I'm the coordinator, C-" 
-							+ msg.getJMSCorrelationID() + " contacted me for RESOURCE REQUET...");
-							
-						// if risorsa libera ok else no
-						
-						String result = "";
-
-						if(!busy)
-						{
-							result = "Y";
-							this.setBusy(true);
-						}
-						else
-						{
-							result = "N";
-						}
-
-						this.myQueue.sendMessage(result, GenericClient.RESOURCE_RESP, 
 							this.getCLIENT_ID(), msg.getJMSCorrelationID());
 					}
 					else
