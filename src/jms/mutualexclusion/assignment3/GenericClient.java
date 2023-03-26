@@ -52,6 +52,11 @@ public class GenericClient
 	/**
 	 * 
 	 */
+	protected static final int RES_PING_TH = 3;
+
+	/**
+	 * 
+	 */
 	protected static final String ID_REQUEST = "ID_REQUEST";
 	protected static final String ID_RESPONSE = "ID_RESPONDE";
 	protected static final String RESOURCE_REQUEST = "RESOURCE_REQUEST";
@@ -63,6 +68,8 @@ public class GenericClient
 	protected static final String RESOURCE_REQ = "RESOURCE_REQ";
 	protected static final String RESOURCE_RESP = "RESOURCE_RESP";
 	protected static final String FREE_RESOURCE = "FREE_RESOURCE";
+	protected static final String USER_ALVIE_CHECK = "USER_ALVIE_CHECK";
+	protected static final String USER_ALVIE_ACK = "USER_ALVIE_ACK";
 
 	/**
 	 * client-broker parameters
@@ -112,8 +119,7 @@ public class GenericClient
 	/**
 	 * 
 	 */
-	@SuppressWarnings("unused")
-	private String resourceUser = "";
+	private String resourceUser = null;
 
 
 	/*******************************************************************************************************************************/
@@ -281,11 +287,16 @@ public class GenericClient
 
 
 	/**
+	 * @throws JMSException
 	 * 
 	 */
-	protected void checkIfAlive()
+	protected void checkIfAlive() throws JMSException
 	{
-		// to do
+		System.out.println("\n(C-" + this.getCLIENT_ID() + 
+			") I'm the coordinator, checking if the resource-user (C-"+ this.getResourceUser() +") is ALIVE...");
+
+		this.myQueue.sendMessage("Resource check alive...", GenericClient.USER_ALVIE_CHECK, 
+			this.getCLIENT_ID(), this.getResourceUser());
 	}
 
 	/**
@@ -302,6 +313,9 @@ public class GenericClient
 		boolean times = true;
 		boolean pinged = false;
 		boolean requested = false;
+		int pingResourceUser = 0;
+		boolean checkAlvie = false; 
+		int checkAliveTh = 0;
 
 		while(true)
 		{
@@ -504,8 +518,28 @@ public class GenericClient
 						{
 							System.out.println("BAM I'm getting the resource... Completing execution...");
 							// L’esecutore fissa casualmente un altro timeout prima di decidere se fare un’altra richiesta
-							int wait = generateRandomNumber(6000, 10000); 
-							Thread.sleep(wait);
+							// int wait = generateRandomNumber(6000, 10000); 
+							int cont = generateRandomNumber(30, 50); 
+
+							// simulating client execution
+							while(cont > 0)
+							{
+								Message aliveReq = this.myQueue.getQueueReceiver().receiveNoWait();
+								
+								if(aliveReq != null && aliveReq.getJMSType().compareTo(GenericClient.USER_ALVIE_CHECK) == 0)
+								{
+									System.out.println("\n(C-" + this.getCLIENT_ID() + ") Message: " 
+										+ ((TextMessage) msg).getText() + " received by: " + msg.getJMSCorrelationID());
+
+									this.myQueue.sendMessage("Client-" + this.getCLIENT_ID() 
+										+ " USER ALIVE ACK", GenericClient.USER_ALVIE_ACK, 
+										this.getCLIENT_ID(), msg.getJMSCorrelationID());
+								}
+
+								Thread.sleep(1000);
+								cont--;
+							}
+
 							this.freeResource();
 							break;
 						}
@@ -522,72 +556,93 @@ public class GenericClient
 			}
 			else if(this.getMyState() == GenericClient.State.COORDINATOR)
 			{
-				// assegnare l’uso della risorsa a un esecutore
-				// individuare se l’esecutore che ha in uso la risorsa non è più attivo
+				pingResourceUser++;
 
-				while(true)
+				/* the coordinator looks for resource request/release */ 
+				Message resReq = this.myQueue.getResourceReceiver().receiveNoWait();
+
+				if (!(resReq == null))
 				{
-					/* the coordinator looks for resource request/release */ 
-					Message resReq = this.myQueue.getResourceReceiver().receiveNoWait();
-
-					if (!(resReq == null))
-					{
-						if(resReq.getJMSType().compareTo(GenericClient.RESOURCE_REQ) == 0)
-						{
-							System.out.println("\n(C-" + this.getCLIENT_ID() + ") I'm the coordinator, C-" 
-								+ resReq.getJMSCorrelationID() + " contacted me for RESOURCE REQUEST...");
-							
-							String result = "";
-
-							if(!busy)
-							{
-								result = "Y";
-								this.setBusy(true);
-								this.assignResource(resReq.getJMSCorrelationID());
-								
-								System.out.println("\n(C-" + this.getCLIENT_ID() + ") I'm the coordinator, and I assigned" + 
-									" the resource to C-" + resReq.getJMSCorrelationID() + "...");
-							}
-							else
-							{
-								result = "N";
-								System.out.println("\n(C-" + this.getCLIENT_ID() + ") I'm the coordinator, I'm not assigning" + 
-									" the resource to C-" + resReq.getJMSCorrelationID() + "...");
-							}
-
-							this.myQueue.sendMessage(result, GenericClient.RESOURCE_RESP, 
-								this.getCLIENT_ID(), resReq.getJMSCorrelationID());
-						}
-						else if(resReq.getJMSType().compareTo(GenericClient.FREE_RESOURCE) == 0)
-						{
-							this.setBusy(false);
-							this.assignResource("");
-
-							System.out.println("\n(C-" + this.getCLIENT_ID() + ") I'm the coordinator, C-" 
-								+ resReq.getJMSCorrelationID() + " contacted me for RESOURCE FREEING...");
-						}
-					}
-
-					Message msg = this.myQueue.getQueueReceiver().receive(3000);	
-					
-					if(msg == null)
-					{
-						// to do ???
-						System.out.println("MSG NULL");
-						Thread.sleep(2000);
-					}				
-					else if(msg.getJMSType().compareTo(GenericClient.COORD_PING) == 0)
+					if(resReq.getJMSType().compareTo(GenericClient.RESOURCE_REQ) == 0)
 					{
 						System.out.println("\n(C-" + this.getCLIENT_ID() + ") I'm the coordinator, C-" 
-							+ msg.getJMSCorrelationID() + " contacted me for PING...");
+							+ resReq.getJMSCorrelationID() + " contacted me for RESOURCE REQUEST...");
+						
+						String result = "";
+
+						if(!busy)
+						{
+							result = "Y";
+							this.setBusy(true);
+							this.assignResource(resReq.getJMSCorrelationID());
 							
-						this.myQueue.sendMessage("I'm ALIVE...", GenericClient.COORD_ALIVE, 
-							this.getCLIENT_ID(), msg.getJMSCorrelationID());
+							System.out.println("\n(C-" + this.getCLIENT_ID() + ") I'm the coordinator, and I assigned" + 
+								" the resource to C-" + resReq.getJMSCorrelationID() + "...");
+						}
+						else
+						{
+							result = "N";
+
+							System.out.println("\n(C-" + this.getCLIENT_ID() + ") I'm the coordinator, I'm not assigning" + 
+								" the resource to C-" + resReq.getJMSCorrelationID() + "...");
+						}
+
+						this.myQueue.sendMessage(result, GenericClient.RESOURCE_RESP, 
+							this.getCLIENT_ID(), resReq.getJMSCorrelationID());
 					}
-					else
+					else if(resReq.getJMSType().compareTo(GenericClient.FREE_RESOURCE) == 0)
 					{
-						System.out.println("YOU ARE WRONGGG!! type: " + msg.getJMSType());
+						this.setBusy(false);
+						this.assignResource(null);
+
+						System.out.println("\n(C-" + this.getCLIENT_ID() + ") I'm the coordinator, C-" 
+							+ resReq.getJMSCorrelationID() + " contacted me for RESOURCE FREEING...");
 					}
+				}
+					
+				if(pingResourceUser > GenericClient.RES_PING_TH && this.getBusy())
+				{
+					checkAlvie = true;
+					pingResourceUser = 0;
+					this.checkIfAlive();
+				}
+					
+				Message msg = this.myQueue.getQueueReceiver().receive(3000);	
+				
+				if(msg == null)
+				{
+					checkAliveTh++; 
+
+					// the coordinator check if the resource-user is still alive
+					if(checkAlvie && checkAliveTh > GenericClient.RES_PING_TH)
+					{
+						checkAlvie = false;
+						checkAliveTh = 0;
+						this.setBusy(false);
+						this.assignResource(null);
+					}
+				}				
+				else if(msg.getJMSType().compareTo(GenericClient.COORD_PING) == 0)
+				{
+					System.out.println("\n(C-" + this.getCLIENT_ID() + ") I'm the coordinator, C-" 
+						+ msg.getJMSCorrelationID() + " contacted me for PING...");
+						
+					this.myQueue.sendMessage("I'm ALIVE...", GenericClient.COORD_ALIVE, 
+						this.getCLIENT_ID(), msg.getJMSCorrelationID());
+				}
+				else if(msg.getJMSType().compareTo(GenericClient.USER_ALVIE_ACK) == 0)
+				{
+					System.out.println("\n(C-" + this.getCLIENT_ID() + ") I'm the coordinator, C-" 
+						+ msg.getJMSCorrelationID() + " is still ALIVE...");
+					
+					checkAlvie = false;
+					checkAliveTh = 0;
+					pingResourceUser = 0;
+				}
+				else if (msg.getJMSType().compareTo(GenericClient.ELECTION_REQ) == 0)
+				{
+					this.setMyState(GenericClient.State.IDLE);
+					break;
 				}
 			}
 			else if(this.getMyState() == GenericClient.State.DEAD)
@@ -733,9 +788,19 @@ public class GenericClient
 	 * 
 	 * @return
 	 */
-	@SuppressWarnings("unused")
 	private boolean getBusy()
 	{
 		return this.busy;
 	}
+
+
+	/**
+	 * 
+	 * @return
+	 */
+	private String getResourceUser()
+	{
+		return this.resourceUser;
+	}
+
 }
