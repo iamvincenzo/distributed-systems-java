@@ -10,10 +10,14 @@ import javax.jms.QueueReceiver;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
 
-
 /**
+ * This class provides the main methods required to handle interaction
+ * between nodes in the system.
  * 
+ * @author Vincenzo Fraello (339641)
+ * @author Giorgia Tedaldi (339642)
  */
+
 public class SendReceiverQueue 
 {
     private QueueSession session;
@@ -28,25 +32,35 @@ public class SendReceiverQueue
 
     /*************************** USED ONLY FOR THE FIRST INTERACTION ***************************/
     
+    /**
+     * 
+     * Method to set session and queues.
+     * 
+     * @param session QueueSession
+     * @throws JMSException error in communication settings
+     */
     public SendReceiverQueue(QueueSession session) throws JMSException
     {
-        // Communication settings: the client sends messages to server
+        /* Communication settings: creation of the queue 
+         * used by the client to send messages to the broker to request the ID. */
         this.session = session;
         this.serverQueue = session.createQueue(GenericClient.BROKER_QUEUE_NAME);
         this.producer = session.createProducer(this.serverQueue);
 
-        // Communication settings: the client defines an endpoint used by the server to reply
+        /* Communication settings: the client defines an 
+         * endpoint used by the server to reply. */
         this.tempDest = session.createTemporaryQueue();
         this.consumer = session.createConsumer(this.tempDest);
     }
 
     /**
-     * This method is used by the client to sent the ID request to the client-broker.
+     * This method is used by the client to send
+     * the ID request to the client-broker.
      * 
-     * @param text
-     * @param type
-     * @param corrId
-     * @throws JMSException
+     * @param text It is the content-text of the message.
+     * @param type It is the type of request.
+     * 
+     * @throws JMSException It is an exception used to handle exceptions that occur during JMS operations.
      */
     public void sendIdRequest(String text, String type) throws JMSException
     {
@@ -54,15 +68,19 @@ public class SendReceiverQueue
         msg.setText(text);
         msg.setJMSReplyTo(this.getTempDest());
         msg.setJMSType(type);
+        
         this.getProducer().send(msg);
     }
 
     /**
      * This method is used by the broker-client to send the ID to the client that requested it.
-     *  
-     * @param text
-     * @param msg - It is the message that the client received.
-     * @throws JMSException
+     * 
+     * @param msg It is the message-request 
+     * 			sent by the requester to get its endpoint.
+     * @param text It is the content-text of the message.
+     * @param type It is the type of request.
+     * 
+     * @throws JMSException It is an exception used to handle exceptions that occur during JMS operations.
      */
     public void sendIdResponse(Message msg, String text, String type) throws JMSException
     {
@@ -71,12 +89,14 @@ public class SendReceiverQueue
         response.setText(text);
         response.setJMSType(type);
         response.setJMSCorrelationID(msg.getJMSCorrelationID());
+        
         producerTemp.send(msg.getJMSReplyTo(), response);
     }
 
     /**
+     * This method is used to get the MessageProducer.
      * 
-     * @return
+     * @return It returns the MessageProducer.
      */
     public MessageProducer getProducer()
     {
@@ -84,8 +104,9 @@ public class SendReceiverQueue
     }
 
     /**
+     * This method is used to get the MessageConsumer.
      * 
-     * @return
+     * @return It returns the MessageConsumer.
      */
     public MessageConsumer getConsumer()
     {
@@ -93,23 +114,27 @@ public class SendReceiverQueue
     }
 
     /**
+     * This method is used to get the Destination.
      * 
-     * @return
+     * @return It returns the Destination.
      */
     public Destination getTempDest()
     {
         return this.tempDest;
     }
 
-    /*******************************************************************************************/
-
-    /**
-     * This method is used to create the peer communication queue.
-     * Once client has the ID can communicate with other peers.
-     * 
-     * @param id
-     * @throws JMSException
-     */
+    
+    /*************************** USED ONLY FOR OTHER INTERACTIONS ***************************/
+    
+	/**
+	 * This method is used to create the peer communication queue.
+	 * Once client has the ID can communicate with other peers.
+	 * 
+	 * @param id It is the id of the queue.
+	 * @param type to distinguish broker from other clients.
+	 * @throws JMSException It is an exception used to handle 
+	 * 			exceptions that occur during JMS operations.
+	 */
     public void createQueue(String id, int type) throws JMSException
     {
         if (type == 0)
@@ -125,18 +150,19 @@ public class SendReceiverQueue
     }
 
     /**
+     * This method is used to get the QueueReceiver.
      * 
-     * @return
+     * @return It returns the QueueReceiver.
      */
     public QueueReceiver getQueueReceiver()
     {
         return this.receiver;
     }   
 
-
     /**
+     * This method is used to get the QueueReceiver.
      * 
-     * @return
+     * @return It returns the QueueReceiver.
      */
     protected QueueReceiver getResourceReceiver()
     {
@@ -144,12 +170,16 @@ public class SendReceiverQueue
     }
 
     /**
+     * This method is used by the node to send any type
+     * of message.
      * 
-     * @param text The text of the message
-     * @param type The type of the message
-     * @param senderId The id of the sender
-     * @param receiverId The id of the receiver
-     * @throws JMSException
+     * @param text The text of the message.
+     * @param type The type of the message.
+     * @param senderId The id of the sender.
+     * @param receiverId The id of the receiver.
+     * 
+     * @throws JMSException It is an exception used to handle 
+	 * 			exceptions that occur during JMS operations.
      */
     public void sendMessage(String text, String type, String senderId, String receiverId) throws JMSException
     {
@@ -160,45 +190,7 @@ public class SendReceiverQueue
         request.setText(text);
         request.setJMSType(type);
         request.setJMSCorrelationID(senderId);
+        
         producer.send(request);
     }
 }
-
-    /*public void sendGenericRequest(String text, String type, String senderId, String receiverId) throws JMSException
-    {
-        Destination peerQueue = session.createQueue(receiverId);
-		MessageProducer producer = session.createProducer(peerQueue);
-
-        TextMessage request = session.createTextMessage();
-        request.setText(text);
-        request.setJMSType(type);
-        request.setJMSCorrelationID(senderId);
-        producer.send(request);
-    }
-
-    public void sendGenericResponse(String text, String type, String senderId, String receiverId) throws JMSException
-    {
-        Destination peerQueue = session.createQueue(receiverId);
-		MessageProducer producer = session.createProducer(peerQueue);
-
-        TextMessage response = session.createTextMessage();
-        response.setText(text);
-        response.setJMSType(type);
-        response.setJMSCorrelationID(senderId);
-        producer.send(response);
-    }
-
-    public QueueSession getSession()
-    {
-        return this.session;
-    }
-
-    public Destination getServerQueue()
-    {
-        return this.serverQueue;
-    }
-
-    public Queue getQueue()
-    {
-        return this.queue;
-    }*/

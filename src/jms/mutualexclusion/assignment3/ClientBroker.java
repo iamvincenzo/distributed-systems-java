@@ -8,14 +8,18 @@ import org.apache.activemq.broker.BrokerFactory;
 
 
 /**
+ * This class is used to run a single 
+ * node and a broker in the system.
  * 
- * This is the first client when the system is launched at the beginning
- *
- **/
+ * @author Vincenzo Fraello (339641)
+ * @author Giorgia Tedaldi (339642)
+ */
+
 public class ClientBroker extends GenericClient
 {
 	/**
-	 * 
+	 * The class ClientBroker is a GenericCLient's sublcass. Initiates a client that during the
+	 * entire process has also the Broker task. The broker assigns all the IDs to the other nodes.
 	 */
 	public void body()
 	{
@@ -33,9 +37,11 @@ public class ClientBroker extends GenericClient
 			{
 				while(true)
 				{
+					/* Manual state setting. */
 					// System.out.print("Enter initial state (I/C): ");
 					// String state = myObj.nextLine(); 
-					 
+					
+					/* Automatic state setting. */
 					String state = "c";
 
 					if(state.toLowerCase().compareTo("i") == 0)
@@ -57,21 +63,21 @@ public class ClientBroker extends GenericClient
 				}
 			}
 
-			/* Phase 1: ids assignment */
+			/* Assumption: the Broker id is 0 and it is self-assigned.*/
 			this.setCLIENT_ID(Integer.parseInt(GenericClient.BROKER_QUEUE_NAME));
 
-			/* creation of queue with id 0 */
+			/* Broker creates its queue with id 0 */
 			this.myQueue = new SendReceiverQueue(this.getSession());
 			this.myQueue.createQueue(this.getCLIENT_ID(), 0);
 
-			/* then assign id to other clients */
+			/* Broker assigns id to other clients in a increasing way. When N clients
+			 * are connected the service starts. */
 			while(GenericClient.getINCR_ID() <= GenericClient.N_CONNECTED) 
 			{
 				this.idAssignment(this.myQueue.getQueueReceiver());
 			}
 
 			System.out.println("All N-1 ID have been assigned!");
-
 			this.clientOperations();			
 		}
 		catch (Exception e)
@@ -95,46 +101,14 @@ public class ClientBroker extends GenericClient
 	}
 
 	/**
+	 * Main method used to run the simulation.
 	 * 
-	 * @param args
-	 * @throws InterruptedException
+	 * @param args Parameter is used to pass any command-line arguments 
+	 * 				to the application during execution.
+	 * @throws InterruptedException Thrown when a running thread is interrupted asynchronously
 	 */
 	public static void main(final String[] args) throws InterruptedException
 	{
 		new ClientBroker().body();				
 	}
 }
-
-// convocate an election
-			/*this.convocateElection(session);
-
-			int start = Integer.parseInt(this.getCLIENT_ID()) + 1;
-			int end = GenericClient.N_CONNECTED;
-			int count = end - start;
-			@SuppressWarnings("unused")
-			int ackReceived = 0;
-
-			while(count >= 0)
-			{
-				// The server waits for requests by any client
-				Message reply = this.myQueue.getQueueReceiver().receive(); //3000
-
-				if(reply == null)
-				{
-					System.out.println("Client is DEAD!");
-				}
-				else if(reply.getJMSType().compareTo(GenericClient.ELECTION_ACK) == 0)
-				{
-					System.out.println("reply to (C-" + this.getCLIENT_ID() + ") ID: " 
-						+ ((TextMessage) reply).getText());
-					ackReceived++;
-				}
-
-				count--;
-			}
-
-			while(true)
-			{
-				// System.out.println("Ho inviato tutti i messaggi di elezione.");
-				Thread.sleep(10000);
-			}*/
